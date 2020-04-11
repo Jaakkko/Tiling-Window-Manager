@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 3.15)
+project(WM C)
+
+set(CMAKE_C_STANDARD 99)
+
+add_executable(WM
+        main.c
+        events.c
+        input.c
+        api.c
+        instance.c logger.c)
+
+target_link_libraries(WM X11 Xrender)
