@@ -7,6 +7,7 @@
 #include "input.h"
 #include "events.h"
 #include "util.h"
+#include "config.h"
 
 #include <stdlib.h>
 
@@ -47,6 +48,8 @@ int wmInitialize() {
         XCloseDisplay(wmDisplay);
         return 0;
     }
+
+    system(startupScriptBath);
 
     XSetErrorHandler(errorHandler);
 

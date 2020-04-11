@@ -12,6 +12,8 @@
 
 #define MOD Mod4Mask
 
+static const char* startupScriptBath = "~/.config/wm/startup.sh";
+
 static const KeyBinding keyBindings[] = {
         // Modifier                  Key          Function            Argument
         { MOD | ShiftMask,  XK_Q,        quit,               0                    },
