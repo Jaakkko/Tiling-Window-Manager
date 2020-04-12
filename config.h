@@ -19,8 +19,8 @@ static const KeyBinding keyBindings[] = {
         { MOD | ControlMask,  XK_Q,        quit,               { .i = 130         } },
         { MOD | ShiftMask,    XK_Q,        quit,               { .i = 0           } },
         { MOD,                XK_Q,        closeActiveWindow,  0                    },
-        { MOD,                XK_J,        focus,              { .i = +1          } },
-        { MOD,                XK_K,        focus,              { .i = -1          } },
+        { MOD,                XK_J,        focus,              { .i = -1          } },
+        { MOD,                XK_K,        focus,              { .i = +1          } },
         { MOD,                XK_Return,   openApplication,    { .v = "alacritty" } },
 };
 

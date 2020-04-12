@@ -20,7 +20,7 @@ void closeActiveWindow(Arg a) {
 void focus(Arg a) {
     if (wmActiveWindow) {
         wmWindow* focus;
-        if (a.i) {
+        if (a.i == 1) {
             focus = wmActiveWindow->previous ? wmActiveWindow->previous : wmTail;
         }
         else {
