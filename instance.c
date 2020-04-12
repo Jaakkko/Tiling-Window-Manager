@@ -22,6 +22,39 @@ wmWindow* wmTail = NULL;
 int wmRunning = True;
 int wmExitCode = 0;
 
+static void attachWindow(wmWindow* window) {
+    window->next = wmHead;
+
+    if (!wmHead) {
+        wmTail = window;
+    }
+    if (wmHead) {
+        wmHead->previous = window;
+    }
+    wmHead = window;
+}
+static void detachWindow(wmWindow* window) {
+    if (!window->previous) {
+        wmHead = window->next;
+        if (wmHead) {
+            wmHead->previous = NULL;
+        }
+    }
+    else {
+        window->previous->next = window->next;
+    }
+
+    if (!window->next) {
+        wmTail = window->previous;
+        if (wmTail) {
+            wmTail->next = NULL;
+        }
+    }
+    else {
+        window->next->previous = window->previous;
+    }
+}
+
 static int wmDetected = 0;
 static int onWMDetected(Display* d, XErrorEvent* e) {
     wmDetected = 1;
@@ -31,6 +64,29 @@ static int errorHandler(Display* d, XErrorEvent* e) {
     logmsg("Error: %x", e->error_code);
     return 0;
 }
+static void queryWindows() {
+    XGrabServer(wmDisplay);
+    Window root, parent;
+    Window* windows;
+    unsigned nwindows;
+    if (XQueryTree(wmDisplay, wmRoot, &root, &parent, &windows, &nwindows)) {
+        for (int i = 0; i < nwindows; i++) {
+            XWindowAttributes attr;
+            if (XGetWindowAttributes(wmDisplay, windows[i], &attr)) {
+                if (attr.map_state == IsViewable) {
+                    wmNewWindow(windows[i], &attr);
+                }
+            }
+        }
+
+        if (wmHead) {
+            wmFocusWindow(wmHead);
+        }
+    }
+    XFree(windows);
+    XUngrabServer(wmDisplay);
+}
+
 int wmInitialize() {
     wmDisplay = XOpenDisplay(NULL);
     if (!wmDisplay) {
@@ -87,6 +143,7 @@ int wmInitialize() {
     wmCursor = XCreateFontCursor(wmDisplay, XC_arrow);
     XDefineCursor(wmDisplay, wmRoot, wmCursor);
 
+    queryWindows();
     initializeKeyBindings();
 
     return 1;
@@ -102,11 +159,16 @@ void wmRun() {
 void wmFree() {
     freeKeyBindings();
 
+    XGrabServer(wmDisplay);
+    wmActiveWindow = NULL;
     wmWindow* next;
     for (wmWindow* wmWindow = wmHead; wmWindow; wmWindow = next) {
         next = wmWindow->next;
+        XReparentWindow(wmDisplay, wmWindow->window, wmRoot, 0, 0);
+        XDestroyWindow(wmDisplay, wmWindow->frame);
         free(wmWindow);
     }
+    XUngrabServer(wmDisplay);
 
     XFreeCursor(wmDisplay, wmCursor);
 
@@ -117,7 +179,9 @@ void wmFocusWindow(wmWindow* window) {
     XMapWindow(wmDisplay, window->frame);
     XRaiseWindow(wmDisplay, window->frame);
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
-    XUnmapWindow(wmDisplay, wmActiveWindow->frame);
+    if (wmActiveWindow) {
+        XUnmapWindow(wmDisplay, wmActiveWindow->frame);
+    }
     wmActiveWindow = window;
 }
 void wmRequestCloseWindow(wmWindow* window) {
@@ -142,51 +206,17 @@ void wmRequestCloseWindow(wmWindow* window) {
     }
 }
 
-static void attachWindow(wmWindow* window) {
-    window->next = wmHead;
-
-    if (!wmHead) {
-        wmTail = window;
-    }
-    if (wmHead) {
-        wmHead->previous = window;
-    }
-    wmHead = window;
-}
-static void detachWindow(wmWindow* window) {
-    if (!window->previous) {
-        wmHead = window->next;
-        if (wmHead) {
-            wmHead->previous = NULL;
-        }
-    }
-    else {
-        window->previous->next = window->next;
-    }
-
-    if (!window->next) {
-        wmTail = window->previous;
-        if (wmTail) {
-            wmTail->next = NULL;
-        }
-    }
-    else {
-        window->next->previous = window->previous;
-    }
-}
-void wmNewWindow(Window window) {
-    XWindowAttributes attr;
-    XGetWindowAttributes(wmDisplay, window, &attr);
-    if (attr.override_redirect) {
+void wmNewWindow(Window window, const XWindowAttributes* attributes) {
+    if (attributes->override_redirect) {
         return;
     }
 
-    int width = MIN(MAX(attr.width, 1920), wmScreenWidth - 200);
-    int height = MIN(MAX(attr.height, 1080), wmScreenHeight - 200);
+    int width = MIN(MAX(attributes->width, 1920), wmScreenWidth - 200);
+    int height = MIN(MAX(attributes->height, 1080), wmScreenHeight - 200);
     int x = wmScreenWidth / 2 - width / 2;
     int y = wmScreenHeight / 2 - height / 2;
 
-    if (attr.width != width || attr.height != height) {
+    if (attributes->width != width || attributes->height != height) {
         XResizeWindow(wmDisplay, window, width, height);
     }
 
@@ -211,25 +241,14 @@ void wmNewWindow(Window window) {
     );
 
     XSelectInput(wmDisplay, frame, SubstructureNotifyMask | SubstructureRedirectMask);
-
     XReparentWindow(wmDisplay, window, frame, 0, 0);
+    XMapWindow(wmDisplay, window);
+    XMoveWindow(wmDisplay, frame, x, y);
 
-    wmWindow* old_wmWindow = wmActiveWindow;
     wmWindow* new_wmWindow = calloc(1, sizeof(wmWindow));
     new_wmWindow->window = window;
     new_wmWindow->frame = frame;
     attachWindow(new_wmWindow);
-    wmActiveWindow = new_wmWindow;
-
-    XMapWindow(wmDisplay, window);
-    XMapWindow(wmDisplay, frame);
-    XMoveWindow(wmDisplay, frame, x, y);
-    XRaiseWindow(wmDisplay, frame);
-    XSetInputFocus(wmDisplay, window, RevertToPointerRoot, CurrentTime);
-
-    if (old_wmWindow) {
-        XUnmapWindow(wmDisplay, old_wmWindow->frame);
-    }
 }
 void wmFreeWindow(wmWindow* window) {
     XUnmapWindow(wmDisplay, window->frame);

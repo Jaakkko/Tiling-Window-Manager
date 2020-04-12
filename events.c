@@ -25,7 +25,13 @@ void wmMapRequest(XEvent event) {
         return;
     }
 
-    wmNewWindow(window);
+    XWindowAttributes attr;
+    if (XGetWindowAttributes(wmDisplay, window, &attr)) {
+        wmNewWindow(window, &attr);
+        if (wmHead) {
+            wmFocusWindow(wmHead);
+        }
+    }
 }
 
 void wmDestroyNotify(XEvent event) {

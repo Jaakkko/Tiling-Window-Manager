@@ -26,7 +26,10 @@ void focus(Arg a) {
         else {
             focus = wmActiveWindow->next ? wmActiveWindow->next : wmHead;
         }
-        wmFocusWindow(focus);
+
+        if (focus != wmActiveWindow) {
+            wmFocusWindow(focus);
+        }
     }
 }
 

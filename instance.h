@@ -39,7 +39,7 @@ void wmFree();
 void wmFocusWindow(wmWindow* window);
 void wmRequestCloseWindow(wmWindow* window);
 
-void wmNewWindow(Window window);
+void wmNewWindow(Window window, const XWindowAttributes* attributes);
 void wmFreeWindow(wmWindow* window);
 wmWindow* wmWindowTowmWindow(Window window);
 
