@@ -20,6 +20,7 @@ wmWindow* wmHead;
 wmWindow* wmTail;
 
 int wmRunning;
+int wmExitCode;
 
 Cursor wmCursor;
 

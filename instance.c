@@ -20,6 +20,7 @@ wmWindow* wmHead = NULL;
 wmWindow* wmTail = NULL;
 
 int wmRunning = True;
+int wmExitCode = 0;
 
 static int wmDetected = 0;
 static int onWMDetected(Display* d, XErrorEvent* e) {

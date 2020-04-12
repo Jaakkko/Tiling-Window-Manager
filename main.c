@@ -9,4 +9,6 @@ int main() {
 
     wmRun();
     wmFree();
+
+    exit(wmExitCode);
 }

@@ -41,4 +41,5 @@ void openApplication(Arg a) {
 
 void quit(Arg a) {
     wmRunning = False;
+    wmExitCode = a.i;
 }
