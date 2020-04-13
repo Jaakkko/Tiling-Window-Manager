@@ -16,7 +16,7 @@ do
       cp $DIR/cmake-build-debug/WM_tmp $DIR/cmake-build-debug/WM_backup
     fi
   else
-    $DIR/cmake-build-debug/WM_backup || break
+    $DIR/cmake-build-debug/WM_backup && success=true || break
     if [ $? -eq 130 ]; then break; fi
   fi
 done
