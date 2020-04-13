@@ -9,9 +9,8 @@
 
 void wmKeyPress(XEvent event);
 void wmMapRequest(XEvent event);
-void wmReparentNotify(XEvent event);
 void wmDestroyNotify(XEvent event);
-void wmUnmapNotify(XEvent event);
+void wmClientMessage(XEvent event);
 
 void (*handler[LASTEvent])(XEvent);
 

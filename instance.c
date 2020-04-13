@@ -10,9 +10,11 @@
 #include "config.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include <X11/cursorfont.h>
 #include <X11/Xutil.h>
+#include <X11/Xatom.h>
 #include <X11/extensions/Xrender.h>
 
 wmWindow* wmActiveWindow = NULL;
@@ -21,6 +23,48 @@ wmWindow* wmTail = NULL;
 
 int wmRunning = True;
 int wmExitCode = 0;
+
+static Window wmcheckwin;
+static wmWindow* fullscreen = NULL;
+
+static void stateHandler(XClientMessageEvent* event) {
+    if (event->data.l[1] == _NET_WM_STATE_FULLSCREEN) {
+        wmWindow* window = wmWindowTowmWindow(event->window);
+        if (!window) {
+            return;
+        }
+
+        if (!fullscreen) {
+            XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, (unsigned char*)&_NET_WM_STATE_FULLSCREEN, 1);
+            XUnmapWindow(wmDisplay, window->frame);
+            XReparentWindow(wmDisplay, window->window, wmRoot, 0, 0);
+            XResizeWindow(wmDisplay, window->window, wmScreenWidth, wmScreenHeight);
+            XRaiseWindow(wmDisplay, window->window);
+            fullscreen = window;
+        }
+        else {
+            XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, NULL, 0);
+            XWindowAttributes attributes;
+            if (XGetWindowAttributes(wmDisplay, window->window, &attributes)) {
+                int width = MIN(MAX(attributes.width, 1920), wmScreenWidth - 200);
+                int height = MIN(MAX(attributes.height, 1080), wmScreenHeight - 200);
+                int x = wmScreenWidth / 2 - width / 2;
+                int y = wmScreenHeight / 2 - height / 2;
+                XResizeWindow(wmDisplay, window->window, width, height);
+                XMoveResizeWindow(wmDisplay, window->frame, x, y, width, height);
+                XReparentWindow(wmDisplay, window->window, window->frame, 0, 0);
+                XMapWindow(wmDisplay, window->frame);
+                XRaiseWindow(wmDisplay, window->frame);
+            }
+            fullscreen = NULL;
+        }
+    }
+}
+
+ClientMessageHandler clientMessageHandler[] = {
+        { &_NET_WM_STATE, stateHandler }
+};
+const unsigned clientMessageHandlersCount = LENGTH(clientMessageHandler);
 
 static void attachWindow(wmWindow* window) {
     window->next = wmHead;
@@ -63,6 +107,35 @@ static int onWMDetected(Display* d, XErrorEvent* e) {
 static int errorHandler(Display* d, XErrorEvent* e) {
     logmsg("Error: %x", e->error_code);
     return 0;
+}
+static void initAtoms() {
+    WM_PROTOCOLS                    = XInternAtom(wmDisplay, "WM_PROTOCOLS", False);
+    WM_DELETE_WINDOW                = XInternAtom(wmDisplay, "WM_DELETE_WINDOW", False);
+    _NET_SUPPORTED                  = XInternAtom(wmDisplay, "_NET_SUPPORTED", False);
+    _NET_CLIENT_LIST                = XInternAtom(wmDisplay, "_NET_CLIENT_LIST", False);
+    _NET_SUPPORTING_WM_CHECK        = XInternAtom(wmDisplay, "_NET_SUPPORTING_WM_CHECK", False);
+    _NET_WM_NAME                    = XInternAtom(wmDisplay, "_NET_WM_NAME", False);
+    _NET_WM_STATE                   = XInternAtom(wmDisplay, "_NET_WM_STATE", False);
+    _NET_WM_STATE_FULLSCREEN        = XInternAtom(wmDisplay, "_NET_WM_STATE_FULLSCREEN", False);
+
+    Atom supported[] = {
+            _NET_SUPPORTED,
+            _NET_CLIENT_LIST,
+            _NET_SUPPORTING_WM_CHECK,
+            _NET_WM_NAME,
+            _NET_WM_STATE,
+            _NET_WM_STATE_FULLSCREEN,
+    };
+
+    XChangeProperty(wmDisplay, wmRoot, _NET_SUPPORTED, XA_ATOM, 32, PropModeReplace, (unsigned char*)supported, LENGTH(supported));
+    XDeleteProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST);
+
+    const char wmname[] = WINDOW_MANAGER_NAME;
+    Atom utf8string = XInternAtom(wmDisplay, "UTF8_STRING", False);
+    wmcheckwin = XCreateSimpleWindow(wmDisplay, wmRoot, 0, 0, 1, 1, 0, 0, 0);
+    XChangeProperty(wmDisplay, wmcheckwin, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
+    XChangeProperty(wmDisplay, wmcheckwin, _NET_WM_NAME, utf8string, 8, PropModeReplace, (unsigned char *) wmname, LENGTH(wmname));
+    XChangeProperty(wmDisplay, wmRoot, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
 }
 static void queryWindows() {
     XGrabServer(wmDisplay);
@@ -109,6 +182,8 @@ int wmInitialize() {
     system(startupScriptBath);
 
     XSetErrorHandler(errorHandler);
+
+    initAtoms();
 
     // Visuals
     XVisualInfo *infos;
@@ -157,6 +232,8 @@ void wmRun() {
     }
 }
 void wmFree() {
+    XDestroyWindow(wmDisplay, wmcheckwin);
+
     freeKeyBindings();
 
     XGrabServer(wmDisplay);
@@ -187,13 +264,12 @@ void wmFocusWindow(wmWindow* window) {
 void wmRequestCloseWindow(wmWindow* window) {
     Atom* supportedProtocols;
     int numSupportedProtocols;
-    Atom WM_DELETE_WINDOW = XInternAtom(wmDisplay, "WM_DELETE_WINDOW", False);
     if (XGetWMProtocols(wmDisplay, window->window, &supportedProtocols, &numSupportedProtocols)) {
         for (int i = 0; i < numSupportedProtocols; i++) {
             if (supportedProtocols[i] == WM_DELETE_WINDOW) {
                 XEvent message;
                 message.xclient.type = ClientMessage;
-                message.xclient.message_type = XInternAtom(wmDisplay, "WM_PROTOCOLS", False);
+                message.xclient.message_type = WM_PROTOCOLS;
                 message.xclient.window = window->window;
                 message.xclient.format = 32;
                 message.xclient.data.l[0] = WM_DELETE_WINDOW;
@@ -240,6 +316,8 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
             &frameAttr
     );
 
+    XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&window, 1);
+
     XSelectInput(wmDisplay, frame, SubstructureNotifyMask | SubstructureRedirectMask);
     XReparentWindow(wmDisplay, window, frame, 0, 0);
     XMapWindow(wmDisplay, window);
@@ -252,8 +330,6 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
 }
 void wmFreeWindow(wmWindow* window) {
     XUnmapWindow(wmDisplay, window->frame);
-    XUnmapWindow(wmDisplay, window->window);
-    XReparentWindow(wmDisplay, window->window, wmRoot, 0, 0);
     XDestroyWindow(wmDisplay, window->frame);
 
     detachWindow(window);
@@ -261,6 +337,12 @@ void wmFreeWindow(wmWindow* window) {
         wmActiveWindow = wmActiveWindow->next ? wmActiveWindow->next : wmActiveWindow->previous;
     }
     free(window);
+
+    XDeleteProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST);
+    for (wmWindow* w = wmHead; w; w = w->next) {
+        Window win = w->window;
+        XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&win, 1);
+    }
 
     if (wmActiveWindow) {
         XMapWindow(wmDisplay, wmActiveWindow->frame);

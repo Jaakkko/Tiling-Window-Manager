@@ -10,6 +10,8 @@
 #include "input.h"
 #include "api.h"
 
+#define WINDOW_MANAGER_NAME "X11 Window Manager"
+
 #define MOD Mod4Mask
 
 static const char* startupScriptBath = "~/.config/wm/startup.sh";

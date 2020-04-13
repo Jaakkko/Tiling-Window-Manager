@@ -6,6 +6,7 @@
 #define WM_INSTANCE_H
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 typedef struct wmWindow wmWindow;
 struct wmWindow {
@@ -31,6 +32,23 @@ Visual* wmVisual;
 Colormap wmColormap;
 int wmScreenWidth;
 int wmScreenHeight;
+
+Atom
+    WM_PROTOCOLS,
+    WM_DELETE_WINDOW,
+    _NET_SUPPORTED,
+    _NET_CLIENT_LIST,
+    _NET_SUPPORTING_WM_CHECK,
+    _NET_WM_NAME,
+    _NET_WM_STATE,
+    _NET_WM_STATE_FULLSCREEN;
+
+typedef struct {
+    Atom* atom;
+    void (*handler)(XClientMessageEvent*);
+} ClientMessageHandler;
+const unsigned clientMessageHandlersCount;
+extern ClientMessageHandler clientMessageHandler[];
 
 int wmInitialize();
 void wmRun();

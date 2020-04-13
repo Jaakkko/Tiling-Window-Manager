@@ -41,8 +41,19 @@ void wmDestroyNotify(XEvent event) {
     }
 }
 
+void wmClientMessage(XEvent event) {
+    XClientMessageEvent* message = &event.xclient;
+    for (int i = 0; i < clientMessageHandlersCount; i++) {
+        if (message->message_type == *clientMessageHandler[i].atom) {
+            clientMessageHandler[i].handler(message);
+            break;
+        }
+    }
+}
+
 void (*handler[LASTEvent])(XEvent) = {
         [KeyPress] = wmKeyPress,
         [MapRequest] = wmMapRequest,
-        [DestroyNotify] = wmDestroyNotify
+        [DestroyNotify] = wmDestroyNotify,
+        [ClientMessage] = wmClientMessage,
 };
