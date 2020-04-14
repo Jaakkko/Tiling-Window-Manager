@@ -16,8 +16,9 @@
 
 #define WORKSPACE_COUNT 9
 #define WORKSPACE(X) \
-    { MOD,             XK_##X, selectWorkspace, { .i = (X - 1) } }, \
-    { MOD | ShiftMask, XK_##X, moveToWorkspace, { .i = (X - 1) } }, \
+    { MOD,               XK_##X, selectWorkspace,   { .i = (X - 1) } }, \
+    { MOD | ShiftMask,   XK_##X, moveToWorkspace,   { .i = (X - 1) } }, \
+    { MOD | ControlMask, XK_##X, toggleToWorkspace, { .i = (X - 1) } }, \
 
 static const char* startupScriptBath = "~/.config/wm/startup.sh";
 

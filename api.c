@@ -89,3 +89,29 @@ void moveToWorkspace(Arg a) {
         wmShowActiveWorkspace();
     }
 }
+
+void toggleToWorkspace(Arg a) {
+    wmWindow** activeWindow = &wmWorkspaces[wmActiveWorkspace].activeWindow;
+    if (*activeWindow) {
+        unsigned mask = 1 << a.i;
+        unsigned workspaces = (*activeWindow)->workspaces ^ mask;
+        if (!workspaces) {
+            return;
+        }
+
+        (*activeWindow)->workspaces = workspaces;
+        if (workspaces & mask) {
+            wmWorkspaces[a.i].activeWindow = *activeWindow;
+        }
+        else {
+            unsigned activeWorkspace = wmActiveWorkspace;
+            wmActiveWorkspace = a.i;
+            wmWorkspaces[a.i].activeWindow = nextVisibleWindow();
+            wmActiveWorkspace = activeWorkspace;
+        }
+
+        if (a.i == wmActiveWorkspace) {
+            wmShowActiveWorkspace();
+        }
+    }
+}

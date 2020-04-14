@@ -17,5 +17,6 @@ void openApplication(Arg);
 void quit(Arg);
 void selectWorkspace(Arg);
 void moveToWorkspace(Arg);
+void toggleToWorkspace(Arg a);
 
 #endif //WM_API_H
