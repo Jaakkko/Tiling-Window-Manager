@@ -8,17 +8,23 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+unsigned wmActiveWorkspace;
+
 typedef struct wmWindow wmWindow;
 struct wmWindow {
     wmWindow* next;
     wmWindow* previous;
     Window window;
     Window frame;
+    unsigned workspaces;
 };
-
-wmWindow* wmActiveWindow;
 wmWindow* wmHead;
 wmWindow* wmTail;
+
+typedef struct {
+    wmWindow* activeWindow;
+} wmWorkspace;
+extern wmWorkspace wmWorkspaces[];
 
 int wmRunning;
 int wmExitCode;
@@ -60,5 +66,7 @@ void wmRequestCloseWindow(wmWindow* window);
 void wmNewWindow(Window window, const XWindowAttributes* attributes);
 void wmFreeWindow(wmWindow* window);
 wmWindow* wmWindowTowmWindow(Window window);
+
+void wmShowActiveWorkspace();
 
 #endif //WM_INSTANCE_H

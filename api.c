@@ -9,27 +9,43 @@
 
 #include "api.h"
 #include "instance.h"
-#include "logger.h"
 
 void closeActiveWindow(Arg a) {
-    if (wmActiveWindow) {
-        wmRequestCloseWindow(wmActiveWindow);
+    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
+    if (activeWindow) {
+        wmRequestCloseWindow(activeWindow);
     }
 }
 
 void focus(Arg a) {
-    if (wmActiveWindow) {
-        wmWindow* focus;
+    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
+    if (activeWindow) {
+        wmWindow* focus = activeWindow;
+        unsigned mask = 1 << wmActiveWorkspace;
         if (a.i == 1) {
-            focus = wmActiveWindow->previous ? wmActiveWindow->previous : wmTail;
+            while (1) {
+                focus = focus->previous ? focus->previous : wmTail;
+                if (!focus || focus == activeWindow) {
+                    return;
+                }
+                if (focus->workspaces & mask) {
+                    break;
+                }
+            }
         }
         else {
-            focus = wmActiveWindow->next ? wmActiveWindow->next : wmHead;
+            while (1) {
+                focus = focus->next ? focus->next : wmHead;
+                if (!focus || focus == activeWindow) {
+                    return;
+                }
+                if (focus->workspaces & mask) {
+                    break;
+                }
+            }
         }
 
-        if (focus != wmActiveWindow) {
-            wmFocusWindow(focus);
-        }
+        wmFocusWindow(focus);
     }
 }
 
@@ -45,4 +61,11 @@ void openApplication(Arg a) {
 void quit(Arg a) {
     wmRunning = False;
     wmExitCode = a.i;
+}
+
+void selectWorkspace(Arg a) {
+    if (a.i != wmActiveWorkspace) {
+        wmActiveWorkspace = a.i;
+        wmShowActiveWorkspace();
+    }
 }

@@ -17,9 +17,12 @@
 #include <X11/Xatom.h>
 #include <X11/extensions/Xrender.h>
 
-wmWindow* wmActiveWindow = NULL;
+unsigned wmActiveWorkspace = 0;
+
 wmWindow* wmHead = NULL;
 wmWindow* wmTail = NULL;
+
+wmWorkspace wmWorkspaces[WORKSPACE_COUNT];
 
 int wmRunning = True;
 int wmExitCode = 0;
@@ -237,7 +240,6 @@ void wmFree() {
     freeKeyBindings();
 
     XGrabServer(wmDisplay);
-    wmActiveWindow = NULL;
     wmWindow* next;
     for (wmWindow* wmWindow = wmHead; wmWindow; wmWindow = next) {
         next = wmWindow->next;
@@ -256,10 +258,13 @@ void wmFocusWindow(wmWindow* window) {
     XMapWindow(wmDisplay, window->frame);
     XRaiseWindow(wmDisplay, window->frame);
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
+
+    wmWindow* wmActiveWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     if (wmActiveWindow) {
         XUnmapWindow(wmDisplay, wmActiveWindow->frame);
     }
-    wmActiveWindow = window;
+
+    wmWorkspaces[wmActiveWorkspace].activeWindow = window;
 }
 void wmRequestCloseWindow(wmWindow* window) {
     Atom* supportedProtocols;
@@ -326,16 +331,33 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     wmWindow* new_wmWindow = calloc(1, sizeof(wmWindow));
     new_wmWindow->window = window;
     new_wmWindow->frame = frame;
+    new_wmWindow->workspaces = 1 << wmActiveWorkspace;
     attachWindow(new_wmWindow);
 }
 void wmFreeWindow(wmWindow* window) {
     XUnmapWindow(wmDisplay, window->frame);
     XDestroyWindow(wmDisplay, window->frame);
 
-    detachWindow(window);
-    if (window == wmActiveWindow) {
-        wmActiveWindow = wmActiveWindow->next ? wmActiveWindow->next : wmActiveWindow->previous;
+    for (int i = 0; i < WORKSPACE_COUNT; i++) {
+        unsigned mask = 1 << i;
+        if (window->workspaces & mask) {
+            wmWindow* activeWindow = wmWorkspaces[i].activeWindow;
+            if (activeWindow) {
+                while (1) {
+                    activeWindow = activeWindow->next ? activeWindow->next : wmHead;
+                    if (activeWindow == wmWorkspaces[i].activeWindow) {
+                        wmWorkspaces[i].activeWindow = NULL;
+                        break;
+                    }
+                    if (activeWindow->workspaces & mask) {
+                        wmWorkspaces[i].activeWindow = activeWindow;
+                        break;
+                    }
+                }
+            }
+        }
     }
+    detachWindow(window);
     free(window);
 
     XDeleteProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST);
@@ -344,14 +366,26 @@ void wmFreeWindow(wmWindow* window) {
         XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&win, 1);
     }
 
-    if (wmActiveWindow) {
-        XMapWindow(wmDisplay, wmActiveWindow->frame);
-        XRaiseWindow(wmDisplay, wmActiveWindow->frame);
-        XSetInputFocus(wmDisplay, wmActiveWindow->window, RevertToPointerRoot, CurrentTime);
+    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
+    if (activeWindow) {
+        XMapWindow(wmDisplay, activeWindow->frame);
+        XRaiseWindow(wmDisplay, activeWindow->frame);
+        XSetInputFocus(wmDisplay, activeWindow->window, RevertToPointerRoot, CurrentTime);
     }
 }
 wmWindow* wmWindowTowmWindow(Window window) {
     wmWindow* w;
     for (w = wmHead; w && window != w->window; w = w->next);
     return w;
+}
+
+void wmShowActiveWorkspace() {
+    for (wmWindow* window = wmHead; window; window = window->next) {
+        XUnmapWindow(wmDisplay, window->frame);
+    }
+
+    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
+    if (activeWindow) {
+        XMapWindow(wmDisplay, activeWindow->frame);
+    }
 }

@@ -14,6 +14,10 @@
 
 #define MOD Mod4Mask
 
+#define WORKSPACE_COUNT 9
+#define WORKSPACE(X) \
+    { MOD, XK_##X, selectWorkspace, { .i = (X - 1) } },
+
 static const char* startupScriptBath = "~/.config/wm/startup.sh";
 
 static const KeyBinding keyBindings[] = {
@@ -24,6 +28,16 @@ static const KeyBinding keyBindings[] = {
         { MOD,                XK_J,        focus,              { .i = -1          } },
         { MOD,                XK_K,        focus,              { .i = +1          } },
         { MOD,                XK_Return,   openApplication,    { .v = "alacritty" } },
+
+        WORKSPACE(1)
+        WORKSPACE(2)
+        WORKSPACE(3)
+        WORKSPACE(4)
+        WORKSPACE(5)
+        WORKSPACE(6)
+        WORKSPACE(7)
+        WORKSPACE(8)
+        WORKSPACE(9)
 };
 
 #endif
