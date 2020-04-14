@@ -6,27 +6,40 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <stddef.h>
 
 #include "api.h"
 #include "instance.h"
 
-static wmWindow* nextVisibleWindow() {
+static wmWindow* visibleWindow(size_t offset, wmWindow* head) {
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
-    wmWindow* focus = activeWindow;
-    if (focus) {
+    if (activeWindow) {
+        wmWindow* focus = activeWindow;
         unsigned mask = 1 << wmActiveWorkspace;
-        while (1) {
-            focus = focus->previous ? focus->previous : wmTail;
+        int i = 0;
+        while (i++ < 10) {
+            focus = *(wmWindow**)((char*)focus + offset);
+            if (!focus) {
+                focus = head;
+            }
             if (!focus || focus == activeWindow) {
                 return NULL;
             }
             if (focus->workspaces & mask) {
-                break;
+                return focus;
             }
         }
     }
 
-    return focus;
+    return NULL;
+}
+
+static wmWindow* nextVisibleWindow() {
+    return visibleWindow(offsetof(wmWindow, next), wmHead);
+}
+
+static wmWindow* previousVisibleWindow() {
+    return visibleWindow(offsetof(wmWindow, previous), wmTail);
 }
 
 void closeActiveWindow(Arg a) {
@@ -39,25 +52,8 @@ void closeActiveWindow(Arg a) {
 void focus(Arg a) {
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     if (activeWindow) {
-        wmWindow* focus = activeWindow;
-        if (a.i == 1) {
-            focus = nextVisibleWindow();
-            if (focus) {
-                wmFocusWindow(focus);
-            }
-        }
-        else {
-            unsigned mask = 1 << wmActiveWorkspace;
-            while (1) {
-                focus = focus->next ? focus->next : wmHead;
-                if (!focus || focus == activeWindow) {
-                    return;
-                }
-                if (focus->workspaces & mask) {
-                    break;
-                }
-            }
-
+        wmWindow* focus = a.i == 1 ? nextVisibleWindow() : previousVisibleWindow();
+        if (focus) {
             wmFocusWindow(focus);
         }
     }
