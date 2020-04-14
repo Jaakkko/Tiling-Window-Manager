@@ -15,6 +15,7 @@ void closeActiveWindow(Arg);
 void focus(Arg);
 void openApplication(Arg);
 void quit(Arg);
-void selectWorkspace(Arg a);
+void selectWorkspace(Arg);
+void moveToWorkspace(Arg);
 
 #endif //WM_API_H
