@@ -12,6 +12,8 @@
 
 #define WINDOW_MANAGER_NAME "X11 Window Manager"
 
+static const unsigned borderWidth = 2;
+
 #define MOD Mod4Mask
 
 #define WORKSPACE_COUNT 9

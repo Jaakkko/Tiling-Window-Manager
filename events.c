@@ -28,9 +28,7 @@ void wmMapRequest(XEvent event) {
     XWindowAttributes attr;
     if (XGetWindowAttributes(wmDisplay, window, &attr)) {
         wmNewWindow(window, &attr);
-        if (wmHead) {
-            wmFocusWindow(wmHead);
-        }
+        wmShowActiveWorkspace();
     }
 }
 

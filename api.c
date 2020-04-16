@@ -11,37 +11,6 @@
 #include "api.h"
 #include "instance.h"
 
-static wmWindow* visibleWindow(size_t offset, wmWindow* head) {
-    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
-    if (activeWindow) {
-        wmWindow* focus = activeWindow;
-        unsigned mask = 1 << wmActiveWorkspace;
-        int i = 0;
-        while (i++ < 10) {
-            focus = *(wmWindow**)((char*)focus + offset);
-            if (!focus) {
-                focus = head;
-            }
-            if (!focus || focus == activeWindow) {
-                return NULL;
-            }
-            if (focus->workspaces & mask) {
-                return focus;
-            }
-        }
-    }
-
-    return NULL;
-}
-
-static wmWindow* nextVisibleWindow() {
-    return visibleWindow(offsetof(wmWindow, next), wmHead);
-}
-
-static wmWindow* previousVisibleWindow() {
-    return visibleWindow(offsetof(wmWindow, previous), wmTail);
-}
-
 void closeActiveWindow(Arg a) {
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     if (activeWindow) {
@@ -52,7 +21,10 @@ void closeActiveWindow(Arg a) {
 void focus(Arg a) {
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     if (activeWindow) {
-        wmWindow* focus = a.i == 1 ? nextVisibleWindow() : previousVisibleWindow();
+        wmWindow* focus =
+                a.i == 1
+                ? wmNextVisibleWindow(wmActiveWorkspace)
+                : wmPreviousVisibleWindow(wmActiveWorkspace);
         if (focus) {
             wmFocusWindow(focus);
         }
@@ -81,37 +53,9 @@ void selectWorkspace(Arg a) {
 }
 
 void moveToWorkspace(Arg a) {
-    wmWindow** activeWindow = &wmWorkspaces[wmActiveWorkspace].activeWindow;
-    if (*activeWindow) {
-        (*activeWindow)->workspaces = 1 << a.i;
-        wmWorkspaces[a.i].activeWindow = *activeWindow;
-        *activeWindow = nextVisibleWindow();
-        wmShowActiveWorkspace();
-    }
+    wmMoveActiveWindow(a.i);
 }
 
 void toggleToWorkspace(Arg a) {
-    wmWindow** activeWindow = &wmWorkspaces[wmActiveWorkspace].activeWindow;
-    if (*activeWindow) {
-        unsigned mask = 1 << a.i;
-        unsigned workspaces = (*activeWindow)->workspaces ^ mask;
-        if (!workspaces) {
-            return;
-        }
-
-        (*activeWindow)->workspaces = workspaces;
-        if (workspaces & mask) {
-            wmWorkspaces[a.i].activeWindow = *activeWindow;
-        }
-        else {
-            unsigned activeWorkspace = wmActiveWorkspace;
-            wmActiveWorkspace = a.i;
-            wmWorkspaces[a.i].activeWindow = nextVisibleWindow();
-            wmActiveWorkspace = activeWorkspace;
-        }
-
-        if (a.i == wmActiveWorkspace) {
-            wmShowActiveWorkspace();
-        }
-    }
+    wmToggleActiveWindow(a.i);
 }

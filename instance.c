@@ -102,6 +102,116 @@ static void detachWindow(wmWindow* window) {
     }
 }
 
+static void freeNodesRecursive(wmNode* node) {
+    for (int i = 0; i < node->numChildren; i++) {
+        freeNodesRecursive(node->nodes + i);
+    }
+
+    free(node->nodes);
+    node->nodes = NULL;
+    node->numChildren = 0;
+}
+static int removeWindowFromNode(wmNode* node, wmWindow* window) {
+    wmNode* child;
+    for (int i = 0; i < node->numChildren; i++) {
+        child = node->nodes + i;
+        if (child->window == window) {
+            node->numChildren--;
+            if (node->numChildren == 1) {
+                node->window = node->nodes[1 ^ i].window;
+                free(node->nodes);
+                node->nodes = NULL;
+                node->numChildren = 0;
+            }
+            else {
+                memcpy(child, child + 1, (node->numChildren - i) * sizeof(wmNode));
+                node->nodes = realloc(node->nodes, node->numChildren * sizeof(wmNode));
+            }
+            return 1;
+        }
+
+        if (removeWindowFromNode(child, window)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+static void addWindowToNode(wmNode* node, wmWindow* window) {
+    if (node->nodes) {
+        node->numChildren++;
+        node->nodes = realloc(node->nodes, node->numChildren * sizeof(wmNode));
+
+        wmNode newNode = { 0, NULL, window };
+        node->nodes[node->numChildren - 1] = newNode;
+    }
+    else if (node->window) {
+        node->nodes = calloc(2, sizeof(wmNode));
+        node->nodes[0].window = node->window;
+        node->nodes[1].window = window;
+        node->numChildren = 2;
+        node->window = NULL;
+    }
+    else {
+        logmsg("addWindowToNode ERROR");
+    }
+}
+static void removeWindowFromLayout(wmNode** layout, wmWindow* window) {
+    if (!removeWindowFromNode(*layout, window)) {
+        free(*layout);
+        *layout = NULL;
+    }
+}
+static void addWindowToLayout(wmNode** layout, wmWindow* window) {
+    if (!*layout) {
+        *layout = calloc(1, sizeof(wmNode));
+        (*layout)->window = window;
+    }
+    else {
+        addWindowToNode(*layout, window);
+    }
+}
+static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height) {
+    if (node->window) {
+        unsigned ww = width - 2 * borderWidth;
+        unsigned wh = height - 2 * borderWidth;
+        XMoveResizeWindow(wmDisplay, node->window->frame, x, y, ww, wh);
+        XResizeWindow(wmDisplay, node->window->window, ww, wh);
+        XMapWindow(wmDisplay, node->window->frame);
+    }
+    else {
+        width = width / node->numChildren;
+        wmNode* child;
+        for (int i = 0; i < node->numChildren; i++) {
+            child = node->nodes + i;
+            showNode(child, x, y, width, height);
+            x += (int)width;
+        }
+    }
+}
+
+static wmWindow* visibleWindow(size_t offset, wmWindow* head, unsigned workspace) {
+    wmWindow* activeWindow = wmWorkspaces[workspace].activeWindow;
+    if (activeWindow) {
+        wmWindow* focus = activeWindow;
+        unsigned mask = 1 << workspace;
+        while (1) {
+            focus = *(wmWindow**)((char*)focus + offset);
+            if (!focus) {
+                focus = head;
+            }
+            if (!focus || focus == activeWindow) {
+                return NULL;
+            }
+            if (focus->workspaces & mask) {
+                return focus;
+            }
+        }
+    }
+
+    return NULL;
+}
+
 static int wmDetected = 0;
 static int onWMDetected(Display* d, XErrorEvent* e) {
     wmDetected = 1;
@@ -140,6 +250,15 @@ static void initAtoms() {
     XChangeProperty(wmDisplay, wmcheckwin, _NET_WM_NAME, utf8string, 8, PropModeReplace, (unsigned char *) wmname, LENGTH(wmname));
     XChangeProperty(wmDisplay, wmRoot, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
 }
+static void freeWorkspaces() {
+    for (int i = 0; i < LENGTH(wmWorkspaces); i++) {
+        wmNode* layout = wmWorkspaces[i].layout;
+        if (layout) {
+            freeNodesRecursive(layout);
+            free(layout);
+        }
+    }
+}
 static void queryWindows() {
     XGrabServer(wmDisplay);
     Window root, parent;
@@ -153,10 +272,6 @@ static void queryWindows() {
                     wmNewWindow(windows[i], &attr);
                 }
             }
-        }
-
-        if (wmHead) {
-            wmFocusWindow(wmHead);
         }
     }
     XFree(windows);
@@ -221,8 +336,9 @@ int wmInitialize() {
     wmCursor = XCreateFontCursor(wmDisplay, XC_arrow);
     XDefineCursor(wmDisplay, wmRoot, wmCursor);
 
-    queryWindows();
     initializeKeyBindings();
+    queryWindows();
+    wmShowActiveWorkspace();
 
     return 1;
 }
@@ -238,6 +354,7 @@ void wmFree() {
     XDestroyWindow(wmDisplay, wmcheckwin);
 
     freeKeyBindings();
+    freeWorkspaces();
 
     XGrabServer(wmDisplay);
     wmWindow* next;
@@ -254,17 +371,57 @@ void wmFree() {
     XCloseDisplay(wmDisplay);
 }
 
-void wmFocusWindow(wmWindow* window) {
-    XMapWindow(wmDisplay, window->frame);
-    XRaiseWindow(wmDisplay, window->frame);
-    XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
+wmWindow* wmNextVisibleWindow(unsigned workspace) {
+    return visibleWindow(offsetof(wmWindow, next), wmHead, workspace);
+}
+wmWindow* wmPreviousVisibleWindow(unsigned workspace) {
+    return visibleWindow(offsetof(wmWindow, previous), wmTail, workspace);
+}
+void wmMoveActiveWindow(unsigned workspace) {
+    if (workspace != wmActiveWorkspace) {
+        wmWorkspace* source = &wmWorkspaces[wmActiveWorkspace];
+        wmWorkspace* destination = &wmWorkspaces[workspace];
+        if (source->activeWindow) {
+            removeWindowFromLayout(&source->layout, source->activeWindow);
+            addWindowToLayout(&destination->layout, source->activeWindow);
 
-    wmWindow* wmActiveWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
-    if (wmActiveWindow) {
-        XUnmapWindow(wmDisplay, wmActiveWindow->frame);
+            destination->activeWindow = source->activeWindow;
+            destination->activeWindow->workspaces = 1U << workspace;
+            source->activeWindow = wmNextVisibleWindow(wmActiveWorkspace);
+            wmShowActiveWorkspace();
+        }
     }
+}
+void wmToggleActiveWindow(unsigned workspaceIndex) {
+    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
+    if (activeWindow) {
+        unsigned mask = 1U << workspaceIndex;
+        unsigned workspaces = activeWindow->workspaces ^ mask;
+        if (!workspaces) {
+            return;
+        }
 
+        activeWindow->workspaces = workspaces;
+        wmWorkspace* workspace = &wmWorkspaces[workspaceIndex];
+        wmNode** layout = &workspace->layout;
+        if (workspaces & mask) {
+            addWindowToLayout(layout, activeWindow);
+            workspace->activeWindow = activeWindow;
+        }
+        else {
+            removeWindowFromLayout(layout, activeWindow);
+            workspace->activeWindow = wmNextVisibleWindow(workspaceIndex);
+        }
+
+        if (workspaceIndex == wmActiveWorkspace) {
+            wmShowActiveWorkspace();
+        }
+    }
+}
+
+void wmFocusWindow(wmWindow* window) {
     wmWorkspaces[wmActiveWorkspace].activeWindow = window;
+    XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
 }
 void wmRequestCloseWindow(wmWindow* window) {
     Atom* supportedProtocols;
@@ -292,15 +449,6 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
         return;
     }
 
-    int width = MIN(MAX(attributes->width, 1920), wmScreenWidth - 200);
-    int height = MIN(MAX(attributes->height, 1080), wmScreenHeight - 200);
-    int x = wmScreenWidth / 2 - width / 2;
-    int y = wmScreenHeight / 2 - height / 2;
-
-    if (attributes->width != width || attributes->height != height) {
-        XResizeWindow(wmDisplay, window, width, height);
-    }
-
     XSetWindowAttributes frameAttr;
     frameAttr.colormap = wmColormap;
     frameAttr.border_pixel = 0x80789F43;
@@ -309,11 +457,11 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     Window frame = XCreateWindow(
             wmDisplay,
             wmRoot,
-            x,
-            y,
-            width,
-            height,
-            4,
+            attributes->x,
+            attributes->y,
+            attributes->width,
+            attributes->height,
+            borderWidth,
             wmDepth,
             CopyFromParent,
             wmVisual,
@@ -326,13 +474,17 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     XSelectInput(wmDisplay, frame, SubstructureNotifyMask | SubstructureRedirectMask);
     XReparentWindow(wmDisplay, window, frame, 0, 0);
     XMapWindow(wmDisplay, window);
-    XMoveWindow(wmDisplay, frame, x, y);
+    XMoveWindow(wmDisplay, frame, attributes->x, attributes->y);
 
     wmWindow* new_wmWindow = calloc(1, sizeof(wmWindow));
     new_wmWindow->window = window;
     new_wmWindow->frame = frame;
     new_wmWindow->workspaces = 1 << wmActiveWorkspace;
     attachWindow(new_wmWindow);
+
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    addWindowToLayout(&workspace->layout, new_wmWindow);
+    workspace->activeWindow = new_wmWindow;
 }
 void wmFreeWindow(wmWindow* window) {
     XUnmapWindow(wmDisplay, window->frame);
@@ -355,6 +507,8 @@ void wmFreeWindow(wmWindow* window) {
                     }
                 }
             }
+
+            removeWindowFromLayout(&wmWorkspaces[i].layout, window);
         }
     }
     detachWindow(window);
@@ -366,12 +520,7 @@ void wmFreeWindow(wmWindow* window) {
         XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&win, 1);
     }
 
-    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
-    if (activeWindow) {
-        XMapWindow(wmDisplay, activeWindow->frame);
-        XRaiseWindow(wmDisplay, activeWindow->frame);
-        XSetInputFocus(wmDisplay, activeWindow->window, RevertToPointerRoot, CurrentTime);
-    }
+    wmShowActiveWorkspace();
 }
 wmWindow* wmWindowTowmWindow(Window window) {
     wmWindow* w;
@@ -384,8 +533,15 @@ void wmShowActiveWorkspace() {
         XUnmapWindow(wmDisplay, window->frame);
     }
 
+    wmNode* layout = wmWorkspaces[wmActiveWorkspace].layout;
+    if (!layout) {
+        return;
+    }
+
+    showNode(layout, 0, 0, wmScreenWidth, wmScreenHeight);
+
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     if (activeWindow) {
-        XMapWindow(wmDisplay, activeWindow->frame);
+        XSetInputFocus(wmDisplay, activeWindow->window, RevertToPointerRoot, CurrentTime);
     }
 }

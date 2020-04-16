@@ -21,8 +21,15 @@ struct wmWindow {
 wmWindow* wmHead;
 wmWindow* wmTail;
 
+typedef struct wmNode wmNode;
+struct wmNode {
+    unsigned numChildren;
+    wmNode* nodes;
+    wmWindow* window;
+};
 typedef struct {
     wmWindow* activeWindow;
+    wmNode* layout;
 } wmWorkspace;
 extern wmWorkspace wmWorkspaces[];
 
@@ -59,6 +66,11 @@ extern ClientMessageHandler clientMessageHandler[];
 int wmInitialize();
 void wmRun();
 void wmFree();
+
+wmWindow* wmNextVisibleWindow(unsigned workspace);
+wmWindow* wmPreviousVisibleWindow(unsigned workspace);
+void wmMoveActiveWindow(unsigned workspace);
+void wmToggleActiveWindow(unsigned workspaceIndex);
 
 void wmFocusWindow(wmWindow* window);
 void wmRequestCloseWindow(wmWindow* window);
