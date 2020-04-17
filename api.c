@@ -58,3 +58,7 @@ void moveToWorkspace(Arg a) {
 void toggleToWorkspace(Arg a) {
     wmToggleActiveWindow(a.i);
 }
+
+void setSplitOrientation(Arg a) {
+    wmSplitOrientation = a.i;
+}

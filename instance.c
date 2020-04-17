@@ -22,6 +22,8 @@ unsigned wmActiveWorkspace = 0;
 wmWindow* wmHead = NULL;
 wmWindow* wmTail = NULL;
 
+wmOrientation wmSplitOrientation = NODE_HORIZONTAL;
+
 wmWorkspace wmWorkspaces[WORKSPACE_COUNT];
 
 int wmRunning = True;
@@ -164,11 +166,11 @@ static void addWindowToNode(wmNode* node, wmWindow* window) {
     else if (node->window) {
         node->nodes = calloc(2, sizeof(wmNode));
         node->nodes[0].window = node->window;
-        node->nodes[0].orientation = !node->orientation;
         node->nodes[1].window = window;
-        node->nodes[1].orientation = !node->orientation;
+        node->orientation = wmSplitOrientation;
         node->numChildren = 2;
         node->window = NULL;
+        wmSplitOrientation = !wmSplitOrientation;
     }
     else {
         logmsg("addWindowToNode ERROR");

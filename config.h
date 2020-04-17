@@ -7,6 +7,7 @@
 #include <X11/keysym.h>
 #include <X11/X.h>
 
+#include "instance.h"
 #include "input.h"
 #include "api.h"
 
@@ -30,12 +31,14 @@ static const char* startupScriptBath = "~/.config/wm/startup.sh";
 
 static const KeyBinding keyBindings[] = {
         // Modifier                    Key          Function            Argument
-        { MOD | ControlMask,  XK_Q,        quit,               { .i = 130         } },
-        { MOD | ShiftMask,    XK_Q,        quit,               { .i = 0           } },
-        { MOD,                XK_Q,        closeActiveWindow,  0                    },
-        { MOD,                XK_J,        focus,              { .i = +1          } },
-        { MOD,                XK_K,        focus,              { .i = -1          } },
-        { MOD,                XK_Return,   openApplication,    { .v = "alacritty" } },
+        { MOD | ControlMask,  XK_Q,        quit,                   { .i = 130             } },
+        { MOD | ShiftMask,    XK_Q,        quit,                   { .i = 0               } },
+        { MOD,                XK_Q,        closeActiveWindow,      0                   },
+        { MOD,                XK_J,        focus,                  { .i = +1              } },
+        { MOD,                XK_K,        focus,                  { .i = -1              } },
+        { MOD,                XK_Return,   openApplication,        { .v = "alacritty"     } },
+        { MOD,                XK_C,        setSplitOrientation,    { .i = NODE_HORIZONTAL } },
+        { MOD,                XK_V,        setSplitOrientation,    { .i = NODE_VERTICAL   } },
 
         WORKSPACE(1)
         WORKSPACE(2)

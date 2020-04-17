@@ -21,13 +21,15 @@ struct wmWindow {
 wmWindow* wmHead;
 wmWindow* wmTail;
 
-enum { NODE_HORIZONTAL, NODE_VERTICAL };
+typedef enum { NODE_HORIZONTAL, NODE_VERTICAL } wmOrientation;
+wmOrientation wmSplitOrientation;
+
 typedef struct wmNode wmNode;
 struct wmNode {
     unsigned numChildren;
     wmNode* nodes;
     wmWindow* window;
-    unsigned orientation;
+    wmOrientation orientation;
 };
 typedef struct {
     wmWindow* activeWindow;
