@@ -181,7 +181,6 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         width -= 2 * (gap + borderWidth);
         XMoveResizeWindow(wmDisplay, node->window->frame, x, y, width, height);
         XResizeWindow(wmDisplay, node->window->window, width, height);
-        XMapWindow(wmDisplay, node->window->frame);
     }
     else {
         width = width / node->numChildren;
@@ -482,7 +481,6 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     XSelectInput(wmDisplay, frame, SubstructureNotifyMask | SubstructureRedirectMask);
     XReparentWindow(wmDisplay, window, frame, 0, 0);
     XMapWindow(wmDisplay, window);
-    XMoveWindow(wmDisplay, frame, attributes->x, attributes->y);
 
     wmWindow* new_wmWindow = calloc(1, sizeof(wmWindow));
     new_wmWindow->window = window;
@@ -544,13 +542,18 @@ void wmSelectWorkspace(unsigned workspace) {
     wmShowActiveWorkspace();
 }
 void wmShowActiveWorkspace() {
+    unsigned mask = 1 << wmActiveWorkspace;
     for (wmWindow* window = wmHead; window; window = window->next) {
-        XUnmapWindow(wmDisplay, window->frame);
+        if (window->workspaces & mask) {
+            XMapWindow(wmDisplay, window->frame);
+        }
+        else {
+            XUnmapWindow(wmDisplay, window->frame);
+        }
     }
 
     if (fullscreen) {
         XMoveResizeWindow(wmDisplay, fullscreen->window, 0, 0, wmScreenWidth, wmScreenHeight);
-        XMapWindow(wmDisplay, fullscreen->window);
     }
     else {
         wmNode* layout = wmWorkspaces[wmActiveWorkspace].layout;
