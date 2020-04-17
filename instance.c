@@ -41,25 +41,17 @@ static void stateHandler(XClientMessageEvent* event) {
             XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, (unsigned char*)&_NET_WM_STATE_FULLSCREEN, 1);
             XUnmapWindow(wmDisplay, window->frame);
             XReparentWindow(wmDisplay, window->window, wmRoot, 0, 0);
-            XResizeWindow(wmDisplay, window->window, wmScreenWidth, wmScreenHeight);
-            XRaiseWindow(wmDisplay, window->window);
             fullscreen = window;
+            wmShowActiveWorkspace();
         }
         else {
             XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, NULL, 0);
             XWindowAttributes attributes;
             if (XGetWindowAttributes(wmDisplay, window->window, &attributes)) {
-                int width = MIN(MAX(attributes.width, 1920), wmScreenWidth - 200);
-                int height = MIN(MAX(attributes.height, 1080), wmScreenHeight - 200);
-                int x = wmScreenWidth / 2 - width / 2;
-                int y = wmScreenHeight / 2 - height / 2;
-                XResizeWindow(wmDisplay, window->window, width, height);
-                XMoveResizeWindow(wmDisplay, window->frame, x, y, width, height);
                 XReparentWindow(wmDisplay, window->window, window->frame, 0, 0);
-                XMapWindow(wmDisplay, window->frame);
-                XRaiseWindow(wmDisplay, window->frame);
             }
             fullscreen = NULL;
+            wmShowActiveWorkspace();
         }
     }
 }
@@ -533,12 +525,18 @@ void wmShowActiveWorkspace() {
         XUnmapWindow(wmDisplay, window->frame);
     }
 
-    wmNode* layout = wmWorkspaces[wmActiveWorkspace].layout;
-    if (!layout) {
-        return;
+    if (fullscreen) {
+        XMoveResizeWindow(wmDisplay, fullscreen->window, 0, 0, wmScreenWidth, wmScreenHeight);
+        XMapWindow(wmDisplay, fullscreen->window);
     }
+    else {
+        wmNode* layout = wmWorkspaces[wmActiveWorkspace].layout;
+        if (!layout) {
+            return;
+        }
 
-    showNode(layout, 0, 0, wmScreenWidth, wmScreenHeight);
+        showNode(layout, 0, 0, wmScreenWidth, wmScreenHeight);
+    }
 
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     if (activeWindow) {
