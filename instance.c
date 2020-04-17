@@ -104,6 +104,21 @@ static void updateBorders() {
     }
 }
 
+static wmNode* findNode(wmNode* node, wmWindow* window) {
+    for (int i = 0; i < node->numChildren; i++) {
+        wmNode* pointer = node->nodes + i;
+        if (pointer->window == window) {
+            return pointer;
+        }
+
+        wmNode* found = findNode(pointer, window);
+        if (found) {
+            return found;
+        }
+    }
+
+    return NULL;
+}
 static void freeNodesRecursive(wmNode* node) {
     for (int i = 0; i < node->numChildren; i++) {
         freeNodesRecursive(node->nodes + i);
@@ -120,10 +135,9 @@ static int removeWindowFromNode(wmNode* node, wmWindow* window) {
         if (child->window == window) {
             node->numChildren--;
             if (node->numChildren == 1) {
-                node->window = node->nodes[1 ^ i].window;
+                wmNode lastOne = node->nodes[1 ^ i];
                 free(node->nodes);
-                node->nodes = NULL;
-                node->numChildren = 0;
+                memcpy(node, &lastOne, sizeof(wmNode));
             }
             else {
                 memcpy(child, child + 1, (node->numChildren - i) * sizeof(wmNode));
@@ -164,13 +178,21 @@ static void removeWindowFromLayout(wmNode** layout, wmWindow* window) {
         *layout = NULL;
     }
 }
-static void addWindowToLayout(wmNode** layout, wmWindow* window) {
+static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
+    wmNode** layout = &workspace->layout;
     if (!*layout) {
         *layout = calloc(1, sizeof(wmNode));
         (*layout)->window = window;
     }
     else {
-        addWindowToNode(*layout, window);
+        wmNode* found = findNode(*layout, workspace->activeWindow);
+        if (found) {
+            addWindowToNode(found, window);
+        }
+        else {
+            addWindowToNode(*layout, window);
+            logmsg("findNode(...) returned NULL");
+        }
     }
 }
 static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height) {
@@ -386,7 +408,7 @@ void wmMoveActiveWindow(unsigned workspace) {
         wmWorkspace* destination = &wmWorkspaces[workspace];
         if (source->activeWindow) {
             removeWindowFromLayout(&source->layout, source->activeWindow);
-            addWindowToLayout(&destination->layout, source->activeWindow);
+            addWindowToLayout(destination, source->activeWindow);
 
             destination->activeWindow = source->activeWindow;
             destination->activeWindow->workspaces = 1U << workspace;
@@ -409,7 +431,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
         wmWorkspace* workspace = &wmWorkspaces[workspaceIndex];
         wmNode** layout = &workspace->layout;
         if (workspaces & mask) {
-            addWindowToLayout(layout, activeWindow);
+            addWindowToLayout(workspace, activeWindow);
             workspace->activeWindow = activeWindow;
         }
         else {
@@ -489,7 +511,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     attachWindow(new_wmWindow);
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    addWindowToLayout(&workspace->layout, new_wmWindow);
+    addWindowToLayout(workspace, new_wmWindow);
     workspace->activeWindow = new_wmWindow;
     updateBorders();
 }
