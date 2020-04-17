@@ -165,10 +165,12 @@ static void addWindowToLayout(wmNode** layout, wmWindow* window) {
 }
 static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height) {
     if (node->window) {
-        unsigned ww = width - 2 * borderWidth;
-        unsigned wh = height - 2 * borderWidth;
-        XMoveResizeWindow(wmDisplay, node->window->frame, x, y, ww, wh);
-        XResizeWindow(wmDisplay, node->window->window, ww, wh);
+        x += gap;
+        y += gap;
+        height -= 2 * (gap + borderWidth);
+        width -= 2 * (gap + borderWidth);
+        XMoveResizeWindow(wmDisplay, node->window->frame, x, y, width, height);
+        XResizeWindow(wmDisplay, node->window->window, width, height);
         XMapWindow(wmDisplay, node->window->frame);
     }
     else {
@@ -535,7 +537,7 @@ void wmShowActiveWorkspace() {
             return;
         }
 
-        showNode(layout, 0, 0, wmScreenWidth, wmScreenHeight);
+        showNode(layout, gap, gap, wmScreenWidth - 2 * gap, wmScreenHeight - 2 * gap);
     }
 
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
