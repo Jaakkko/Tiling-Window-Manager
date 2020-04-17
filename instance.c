@@ -94,6 +94,16 @@ static void detachWindow(wmWindow* window) {
     }
 }
 
+static void updateBorders() {
+    unsigned mask = 1 << wmActiveWorkspace;
+    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
+    for (wmWindow* window = wmHead; window; window = window->next) {
+        if (window->workspaces & mask) {
+            XSetWindowBorder(wmDisplay, window->frame, window == activeWindow ? borderColorActive : borderColor);
+        }
+    }
+}
+
 static void freeNodesRecursive(wmNode* node) {
     for (int i = 0; i < node->numChildren; i++) {
         freeNodesRecursive(node->nodes + i);
@@ -382,6 +392,7 @@ void wmMoveActiveWindow(unsigned workspace) {
             destination->activeWindow = source->activeWindow;
             destination->activeWindow->workspaces = 1U << workspace;
             source->activeWindow = wmNextVisibleWindow(wmActiveWorkspace);
+            updateBorders();
             wmShowActiveWorkspace();
         }
     }
@@ -407,6 +418,8 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
             workspace->activeWindow = wmNextVisibleWindow(workspaceIndex);
         }
 
+        updateBorders();
+
         if (workspaceIndex == wmActiveWorkspace) {
             wmShowActiveWorkspace();
         }
@@ -415,6 +428,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
 
 void wmFocusWindow(wmWindow* window) {
     wmWorkspaces[wmActiveWorkspace].activeWindow = window;
+    updateBorders();
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
 }
 void wmRequestCloseWindow(wmWindow* window) {
@@ -445,7 +459,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
 
     XSetWindowAttributes frameAttr;
     frameAttr.colormap = wmColormap;
-    frameAttr.border_pixel = 0x80789F43;
+    frameAttr.border_pixel = borderColor;
     frameAttr.background_pixel = 0;
 
     Window frame = XCreateWindow(
@@ -479,6 +493,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     addWindowToLayout(&workspace->layout, new_wmWindow);
     workspace->activeWindow = new_wmWindow;
+    updateBorders();
 }
 void wmFreeWindow(wmWindow* window) {
     XUnmapWindow(wmDisplay, window->frame);
@@ -514,6 +529,7 @@ void wmFreeWindow(wmWindow* window) {
         XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&win, 1);
     }
 
+    updateBorders();
     wmShowActiveWorkspace();
 }
 wmWindow* wmWindowTowmWindow(Window window) {
@@ -522,6 +538,11 @@ wmWindow* wmWindowTowmWindow(Window window) {
     return w;
 }
 
+void wmSelectWorkspace(unsigned workspace) {
+    wmActiveWorkspace = workspace;
+    updateBorders();
+    wmShowActiveWorkspace();
+}
 void wmShowActiveWorkspace() {
     for (wmWindow* window = wmHead; window; window = window->next) {
         XUnmapWindow(wmDisplay, window->frame);

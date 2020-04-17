@@ -47,8 +47,7 @@ void quit(Arg a) {
 
 void selectWorkspace(Arg a) {
     if (a.i != wmActiveWorkspace) {
-        wmActiveWorkspace = a.i;
-        wmShowActiveWorkspace();
+        wmSelectWorkspace(a.i);
     }
 }
 

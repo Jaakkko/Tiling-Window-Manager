@@ -79,6 +79,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes);
 void wmFreeWindow(wmWindow* window);
 wmWindow* wmWindowTowmWindow(Window window);
 
+void wmSelectWorkspace(unsigned workspace);
 void wmShowActiveWorkspace();
 
 #endif //WM_INSTANCE_H

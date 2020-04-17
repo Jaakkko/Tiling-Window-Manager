@@ -12,8 +12,11 @@
 
 #define WINDOW_MANAGER_NAME "X11 Window Manager"
 
-static const unsigned borderWidth = 2;
-static const unsigned gap         = 4; // 1 = 2px
+//                                          AARRGGBB
+static const unsigned borderColorActive = 0xfff7eb60;
+static const unsigned borderColor       = 0x801d5b82;
+static const unsigned borderWidth       = 2;
+static const unsigned gap               = 4; // 1 = 2px
 
 #define MOD Mod4Mask
 
