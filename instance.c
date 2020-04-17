@@ -164,7 +164,9 @@ static void addWindowToNode(wmNode* node, wmWindow* window) {
     else if (node->window) {
         node->nodes = calloc(2, sizeof(wmNode));
         node->nodes[0].window = node->window;
+        node->nodes[0].orientation = !node->orientation;
         node->nodes[1].window = window;
+        node->nodes[1].orientation = !node->orientation;
         node->numChildren = 2;
         node->window = NULL;
     }
@@ -205,12 +207,22 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         XResizeWindow(wmDisplay, node->window->window, width, height);
     }
     else {
-        width = width / node->numChildren;
         wmNode* child;
-        for (int i = 0; i < node->numChildren; i++) {
-            child = node->nodes + i;
-            showNode(child, x, y, width, height);
-            x += (int)width;
+        if (node->orientation == NODE_HORIZONTAL) {
+            width = width / node->numChildren;
+            for (int i = 0; i < node->numChildren; i++) {
+                child = node->nodes + i;
+                showNode(child, x, y, width, height);
+                x += (int)width;
+            }
+        }
+        else {
+            height = height / node->numChildren;
+            for (int i = 0; i < node->numChildren; i++) {
+                child = node->nodes + i;
+                showNode(child, x, y, width, height);
+                y += (int)height;
+            }
         }
     }
 }
