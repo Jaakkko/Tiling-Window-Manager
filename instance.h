@@ -88,7 +88,8 @@ wmWindow* wmWindowTowmWindow(Window window);
 void wmSelectWorkspace(unsigned workspaceIndex);
 void wmShowActiveWorkspace();
 
-void wmSetSplitOrientation(wmSplitMode orientation);
+void wmLowerSplit(wmSplitMode orientation);
+void wmRaiseSplit(wmSplitMode orientation);
 void wmUpdateBorders();
 
 #endif //WM_INSTANCE_H

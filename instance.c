@@ -131,14 +131,14 @@ static wmNode* findNode(wmNode* node, wmWindow* window) {
 
     return NULL;
 }
-static wmNode* findParent(wmNode* node, wmWindow* window) {
+static wmNode* findParent(wmNode* node, wmNode* child) {
     for (int i = 0; i < node->numChildren; i++) {
         wmNode* ptr = node->nodes + i;
-        if (ptr->window == window) {
+        if (ptr == child) {
             return node;
         }
 
-        wmNode* found = findParent(ptr, window);
+        wmNode* found = findParent(ptr, child);
         if (found) {
             return found;
         }
@@ -180,7 +180,19 @@ static wmNode* removeWindowFromNode(wmNode* node, wmWindow* window) {
 
     return NULL;
 }
-static wmNode* addWindowToNode(wmNode* node, wmWindow* window) {
+static wmNode* addWindowToNode(wmNode* node, wmWindow* window, unsigned split) {
+    if (split) {
+        wmNode oldNode = *node;
+        node->nodes = calloc(2, sizeof(wmNode));
+        node->nodes[0] = oldNode;
+        node->nodes[1].window = window;
+        node->orientation = wmSplitOrientation == NONE ? node->orientation : wmSplitOrientation;
+        node->numChildren = 2;
+        node->window = NULL;
+        wmSplitOrientation = !wmSplitOrientation;
+        return &node->nodes[1];
+    }
+
     if (node->nodes) {
         node->numChildren++;
         node->nodes = realloc(node->nodes, node->numChildren * sizeof(wmNode));
@@ -212,7 +224,10 @@ static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
         workspace->layout = NULL;
     }
 
-    workspace->splitNode = parent;
+    if (workspace->activeWindow) {
+        workspace->splitNode = findNode(workspace->layout, workspace->activeWindow);
+    }
+    workspace->showSplitBorder = 0;
 }
 static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
     wmNode** layout = &workspace->layout;
@@ -226,15 +241,7 @@ static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
             wmSplitOrientation = HORIZONTAL;
         }
 
-        wmNode* dest;
-        if (wmSplitOrientation == NONE) {
-            dest = findParent(*layout, workspace->activeWindow);
-        }
-        else {
-            dest = findNode(*layout, workspace->activeWindow);
-        }
-
-        workspace->splitNode = addWindowToNode(dest ? dest : *layout, window);
+        workspace->splitNode = addWindowToNode(workspace->splitNode, window, wmSplitOrientation != NONE);
     }
 }
 static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height) {
@@ -506,6 +513,7 @@ void wmFocusWindow(wmWindow* window) {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     workspace->activeWindow = window;
     workspace->showSplitBorder = 0;
+    workspace->splitNode = findNode(workspace->layout, workspace->activeWindow);
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
     wmUpdateBorders();
 }
@@ -652,20 +660,37 @@ void wmShowActiveWorkspace() {
     }
 }
 
-void wmSetSplitOrientation(wmSplitMode orientation) {
+void wmLowerSplit(wmSplitMode orientation) {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    if (!workspace->activeWindow) {
+    if (!workspace->layout) {
         return;
     }
 
-    if (orientation == NONE) {
-        workspace->splitNode = findParent(workspace->layout, workspace->activeWindow);
+    unsigned found = 0;
+    for (int i = 0; i < workspace->splitNode->numChildren; i++) {
+        wmNode* child = workspace->splitNode->nodes + i;
+        if (findNode(child, workspace->activeWindow)) {
+            workspace->splitNode = child;
+            found = 1;
+            break;
+        }
+    }
+
+    workspace->showSplitBorder = found && (orientation != NONE || workspace->splitNode->numChildren >= 2);
+    wmSplitOrientation = orientation;
+    wmUpdateBorders();
+}
+void wmRaiseSplit(wmSplitMode orientation) {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (!workspace->layout) {
+        return;
+    }
+
+    if (workspace->showSplitBorder || orientation == NONE) {
+        workspace->splitNode = findParent(workspace->layout, workspace->splitNode);
         if (!workspace->splitNode) {
             workspace->splitNode = workspace->layout;
         }
-    }
-    else {
-        workspace->splitNode = findNode(workspace->layout, workspace->activeWindow);
     }
 
     wmSplitOrientation = orientation;

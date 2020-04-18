@@ -39,9 +39,12 @@ static const KeyBinding keyBindings[] = {
         { MOD,                XK_K,        focus,                  { .i = -1              } },
         { MOD,                XK_Return,   openApplication,        { .v = "alacritty"     } },
         { MOD,                XK_Z,        clearSplitHints,        {                      } },
-        { MOD,                XK_X,        setSplitOrientation,    { .i = NONE            } },
-        { MOD,                XK_C,        setSplitOrientation,    { .i = HORIZONTAL      } },
-        { MOD,                XK_V,        setSplitOrientation,    { .i = VERTICAL        } },
+        { MOD,                XK_X,        raiseSplit,             { .i = NONE            } },
+        { MOD,                XK_C,        raiseSplit,             { .i = HORIZONTAL      } },
+        { MOD,                XK_V,        raiseSplit,             { .i = VERTICAL        } },
+        { MOD | ControlMask,  XK_X,        lowerSplit,             { .i = NONE            } },
+        { MOD | ControlMask,  XK_C,        lowerSplit,             { .i = HORIZONTAL      } },
+        { MOD | ControlMask,  XK_V,        lowerSplit,             { .i = VERTICAL        } },
 
         WORKSPACE(1)
         WORKSPACE(2)
