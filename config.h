@@ -14,6 +14,7 @@
 #define WINDOW_MANAGER_NAME "X11 Window Manager"
 
 //                                          AARRGGBB
+static const unsigned borderColorSplit  = 0xff50fa78;
 static const unsigned borderColorActive = 0xfff7eb60;
 static const unsigned borderColor       = 0x801d5b82;
 static const unsigned borderWidth       = 2;
@@ -30,15 +31,17 @@ static const unsigned gap               = 4; // 1 = 2px
 static const char* startupScriptBath = "~/.config/wm/startup.sh";
 
 static const KeyBinding keyBindings[] = {
-        // Modifier                    Key          Function            Argument
+        // Modifier                    Key          Function                Argument
         { MOD | ControlMask,  XK_Q,        quit,                   { .i = 130             } },
         { MOD | ShiftMask,    XK_Q,        quit,                   { .i = 0               } },
-        { MOD,                XK_Q,        closeActiveWindow,      0                   },
+        { MOD,                XK_Q,        closeActiveWindow,      {                      } },
         { MOD,                XK_J,        focus,                  { .i = +1              } },
         { MOD,                XK_K,        focus,                  { .i = -1              } },
         { MOD,                XK_Return,   openApplication,        { .v = "alacritty"     } },
-        { MOD,                XK_C,        setSplitOrientation,    { .i = NODE_HORIZONTAL } },
-        { MOD,                XK_V,        setSplitOrientation,    { .i = NODE_VERTICAL   } },
+        { MOD,                XK_Z,        clearSplitHints,        {                      } },
+        { MOD,                XK_X,        setSplitOrientation,    { .i = NONE            } },
+        { MOD,                XK_C,        setSplitOrientation,    { .i = HORIZONTAL      } },
+        { MOD,                XK_V,        setSplitOrientation,    { .i = VERTICAL        } },
 
         WORKSPACE(1)
         WORKSPACE(2)

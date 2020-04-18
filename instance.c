@@ -22,7 +22,7 @@ unsigned wmActiveWorkspace = 0;
 wmWindow* wmHead = NULL;
 wmWindow* wmTail = NULL;
 
-wmOrientation wmSplitOrientation = NODE_HORIZONTAL;
+wmSplitMode wmSplitOrientation = HORIZONTAL;
 
 wmWorkspace wmWorkspaces[WORKSPACE_COUNT];
 
@@ -96,24 +96,49 @@ static void detachWindow(wmWindow* window) {
     }
 }
 
-static void updateBorders() {
-    unsigned mask = 1 << wmActiveWorkspace;
-    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
-    for (wmWindow* window = wmHead; window; window = window->next) {
-        if (window->workspaces & mask) {
-            XSetWindowBorder(wmDisplay, window->frame, window == activeWindow ? borderColorActive : borderColor);
+static void updateBorders(wmNode* node, int belowSplit) {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (node->window) {
+        unsigned color;
+        if (workspace->showSplitBorder && belowSplit) {
+            color = borderColorSplit;
         }
+        else {
+            color = node->window == workspace->activeWindow ? borderColorActive : borderColor;
+        }
+
+        XSetWindowBorder(wmDisplay, node->window->frame, color);
+        return;
+    }
+
+    for (int i = 0; i < node->numChildren; i++) {
+        wmNode* child = node->nodes + i;
+        updateBorders(child, belowSplit || node == workspace->splitNode || child == workspace->splitNode);
     }
 }
 
 static wmNode* findNode(wmNode* node, wmWindow* window) {
+    if (node->window == window) {
+        return node;
+    }
+
     for (int i = 0; i < node->numChildren; i++) {
-        wmNode* pointer = node->nodes + i;
-        if (pointer->window == window) {
-            return pointer;
+        wmNode* found = findNode(node->nodes + i, window);
+        if (found) {
+            return found;
+        }
+    }
+
+    return NULL;
+}
+static wmNode* findParent(wmNode* node, wmWindow* window) {
+    for (int i = 0; i < node->numChildren; i++) {
+        wmNode* ptr = node->nodes + i;
+        if (ptr->window == window) {
+            return node;
         }
 
-        wmNode* found = findNode(pointer, window);
+        wmNode* found = findParent(ptr, window);
         if (found) {
             return found;
         }
@@ -130,7 +155,7 @@ static void freeNodesRecursive(wmNode* node) {
     node->nodes = NULL;
     node->numChildren = 0;
 }
-static int removeWindowFromNode(wmNode* node, wmWindow* window) {
+static wmNode* removeWindowFromNode(wmNode* node, wmWindow* window) {
     wmNode* child;
     for (int i = 0; i < node->numChildren; i++) {
         child = node->nodes + i;
@@ -145,23 +170,24 @@ static int removeWindowFromNode(wmNode* node, wmWindow* window) {
                 memcpy(child, child + 1, (node->numChildren - i) * sizeof(wmNode));
                 node->nodes = realloc(node->nodes, node->numChildren * sizeof(wmNode));
             }
-            return 1;
+            return node;
         }
 
         if (removeWindowFromNode(child, window)) {
-            return 1;
+            return node;
         }
     }
 
-    return 0;
+    return NULL;
 }
-static void addWindowToNode(wmNode* node, wmWindow* window) {
+static wmNode* addWindowToNode(wmNode* node, wmWindow* window) {
     if (node->nodes) {
         node->numChildren++;
         node->nodes = realloc(node->nodes, node->numChildren * sizeof(wmNode));
-
+        int index = node->numChildren - 1;
         wmNode newNode = { 0, NULL, window };
-        node->nodes[node->numChildren - 1] = newNode;
+        node->nodes[index] = newNode;
+        return &node->nodes[index];
     }
     else if (node->window) {
         node->nodes = calloc(2, sizeof(wmNode));
@@ -171,32 +197,44 @@ static void addWindowToNode(wmNode* node, wmWindow* window) {
         node->numChildren = 2;
         node->window = NULL;
         wmSplitOrientation = !wmSplitOrientation;
+        return &node->nodes[1];
     }
     else {
         logmsg("addWindowToNode ERROR");
     }
+
+    return NULL;
 }
-static void removeWindowFromLayout(wmNode** layout, wmWindow* window) {
-    if (!removeWindowFromNode(*layout, window)) {
-        free(*layout);
-        *layout = NULL;
+static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
+    wmNode* parent = removeWindowFromNode(workspace->layout, window);
+    if (!parent) {
+        free(workspace->layout);
+        workspace->layout = NULL;
     }
+
+    workspace->splitNode = parent;
 }
 static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
     wmNode** layout = &workspace->layout;
     if (!*layout) {
         *layout = calloc(1, sizeof(wmNode));
         (*layout)->window = window;
+        workspace->splitNode = *layout;
     }
     else {
-        wmNode* found = findNode(*layout, workspace->activeWindow);
-        if (found) {
-            addWindowToNode(found, window);
+        if ((*layout)->window) {
+            wmSplitOrientation = HORIZONTAL;
+        }
+
+        wmNode* dest;
+        if (wmSplitOrientation == NONE) {
+            dest = findParent(*layout, workspace->activeWindow);
         }
         else {
-            addWindowToNode(*layout, window);
-            logmsg("findNode(...) returned NULL");
+            dest = findNode(*layout, workspace->activeWindow);
         }
+
+        workspace->splitNode = addWindowToNode(dest ? dest : *layout, window);
     }
 }
 static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height) {
@@ -210,7 +248,7 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
     }
     else {
         wmNode* child;
-        if (node->orientation == NODE_HORIZONTAL) {
+        if (node->orientation == HORIZONTAL) {
             width = width / node->numChildren;
             for (int i = 0; i < node->numChildren; i++) {
                 child = node->nodes + i;
@@ -421,13 +459,16 @@ void wmMoveActiveWindow(unsigned workspace) {
         wmWorkspace* source = &wmWorkspaces[wmActiveWorkspace];
         wmWorkspace* destination = &wmWorkspaces[workspace];
         if (source->activeWindow) {
-            removeWindowFromLayout(&source->layout, source->activeWindow);
+            source->showSplitBorder = 0;
+            destination->showSplitBorder = 0;
+
+            removeWindowFromLayout(source, source->activeWindow);
             addWindowToLayout(destination, source->activeWindow);
 
             destination->activeWindow = source->activeWindow;
             destination->activeWindow->workspaces = 1U << workspace;
             source->activeWindow = wmNextVisibleWindow(wmActiveWorkspace);
-            updateBorders();
+            wmUpdateBorders();
             wmShowActiveWorkspace();
         }
     }
@@ -443,17 +484,17 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
 
         activeWindow->workspaces = workspaces;
         wmWorkspace* workspace = &wmWorkspaces[workspaceIndex];
-        wmNode** layout = &workspace->layout;
         if (workspaces & mask) {
             addWindowToLayout(workspace, activeWindow);
             workspace->activeWindow = activeWindow;
         }
         else {
-            removeWindowFromLayout(layout, activeWindow);
+            removeWindowFromLayout(workspace, activeWindow);
             workspace->activeWindow = wmNextVisibleWindow(workspaceIndex);
         }
 
-        updateBorders();
+        wmWorkspaces[wmActiveWorkspace].showSplitBorder = 0;
+        wmUpdateBorders();
 
         if (workspaceIndex == wmActiveWorkspace) {
             wmShowActiveWorkspace();
@@ -462,9 +503,11 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
 }
 
 void wmFocusWindow(wmWindow* window) {
-    wmWorkspaces[wmActiveWorkspace].activeWindow = window;
-    updateBorders();
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    workspace->activeWindow = window;
+    workspace->showSplitBorder = 0;
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
+    wmUpdateBorders();
 }
 void wmRequestCloseWindow(wmWindow* window) {
     Atom* supportedProtocols;
@@ -527,7 +570,8 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     addWindowToLayout(workspace, new_wmWindow);
     workspace->activeWindow = new_wmWindow;
-    updateBorders();
+    workspace->showSplitBorder = 0;
+    wmUpdateBorders();
 }
 void wmFreeWindow(wmWindow* window) {
     XUnmapWindow(wmDisplay, window->frame);
@@ -551,7 +595,7 @@ void wmFreeWindow(wmWindow* window) {
                 }
             }
 
-            removeWindowFromLayout(&wmWorkspaces[i].layout, window);
+            removeWindowFromLayout(&wmWorkspaces[i], window);
         }
     }
     detachWindow(window);
@@ -563,7 +607,7 @@ void wmFreeWindow(wmWindow* window) {
         XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&win, 1);
     }
 
-    updateBorders();
+    wmUpdateBorders();
     wmShowActiveWorkspace();
 }
 wmWindow* wmWindowTowmWindow(Window window) {
@@ -572,9 +616,11 @@ wmWindow* wmWindowTowmWindow(Window window) {
     return w;
 }
 
-void wmSelectWorkspace(unsigned workspace) {
-    wmActiveWorkspace = workspace;
-    updateBorders();
+void wmSelectWorkspace(unsigned workspaceIndex) {
+    wmActiveWorkspace = workspaceIndex;
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    workspace->showSplitBorder = 0;
+    wmUpdateBorders();
     wmShowActiveWorkspace();
 }
 void wmShowActiveWorkspace() {
@@ -603,5 +649,32 @@ void wmShowActiveWorkspace() {
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     if (activeWindow) {
         XSetInputFocus(wmDisplay, activeWindow->window, RevertToPointerRoot, CurrentTime);
+    }
+}
+
+void wmSetSplitOrientation(wmSplitMode orientation) {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (!workspace->activeWindow) {
+        return;
+    }
+
+    if (orientation == NONE) {
+        workspace->splitNode = findParent(workspace->layout, workspace->activeWindow);
+        if (!workspace->splitNode) {
+            workspace->splitNode = workspace->layout;
+        }
+    }
+    else {
+        workspace->splitNode = findNode(workspace->layout, workspace->activeWindow);
+    }
+
+    wmSplitOrientation = orientation;
+    workspace->showSplitBorder = 1;
+    wmUpdateBorders();
+}
+void wmUpdateBorders() {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (workspace->layout) {
+        updateBorders(workspace->layout, workspace->layout == workspace->splitNode);
     }
 }

@@ -60,5 +60,10 @@ void toggleToWorkspace(Arg a) {
 }
 
 void setSplitOrientation(Arg a) {
-    wmSplitOrientation = a.i;
+    wmSetSplitOrientation(a.i);
+}
+
+void clearSplitHints(Arg a) {
+    wmWorkspaces[wmActiveWorkspace].showSplitBorder = 0;
+    wmUpdateBorders();
 }

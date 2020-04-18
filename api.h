@@ -19,5 +19,6 @@ void selectWorkspace(Arg);
 void moveToWorkspace(Arg);
 void toggleToWorkspace(Arg);
 void setSplitOrientation(Arg);
+void clearSplitHints(Arg);
 
 #endif //WM_API_H

@@ -21,19 +21,21 @@ struct wmWindow {
 wmWindow* wmHead;
 wmWindow* wmTail;
 
-typedef enum { NODE_HORIZONTAL, NODE_VERTICAL } wmOrientation;
-wmOrientation wmSplitOrientation;
+typedef enum { HORIZONTAL, VERTICAL, NONE } wmSplitMode;
+wmSplitMode wmSplitOrientation;
 
 typedef struct wmNode wmNode;
 struct wmNode {
     unsigned numChildren;
     wmNode* nodes;
     wmWindow* window;
-    wmOrientation orientation;
+    wmSplitMode orientation;
 };
 typedef struct {
     wmWindow* activeWindow;
     wmNode* layout;
+    wmNode* splitNode;
+    unsigned showSplitBorder;
 } wmWorkspace;
 extern wmWorkspace wmWorkspaces[];
 
@@ -83,7 +85,10 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes);
 void wmFreeWindow(wmWindow* window);
 wmWindow* wmWindowTowmWindow(Window window);
 
-void wmSelectWorkspace(unsigned workspace);
+void wmSelectWorkspace(unsigned workspaceIndex);
 void wmShowActiveWorkspace();
+
+void wmSetSplitOrientation(wmSplitMode orientation);
+void wmUpdateBorders();
 
 #endif //WM_INSTANCE_H
