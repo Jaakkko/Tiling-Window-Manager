@@ -71,3 +71,19 @@ void clearSplitHints(Arg a) {
     wmWorkspaces[wmActiveWorkspace].showSplitBorder = 0;
     wmUpdateBorders();
 }
+
+void moveLeftEdgeHorizontally(Arg a) {
+    wmMoveLeftEdgeHorizontally(a.i);
+}
+
+void moveRightEdgeHorizontally(Arg a) {
+    wmMoveRightEdgeHorizontally(a.i);
+}
+
+void moveUpperEdgeVertically(Arg a) {
+    wmMoveUpperEdgeVertically(a.i);
+}
+
+void moveLowerEdgeVertically(Arg a) {
+    wmMoveLowerEdgeVertically(a.i);
+}

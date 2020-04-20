@@ -117,6 +117,109 @@ static void updateBorders(wmNode* node, int belowSplit) {
     }
 }
 
+static int findLeftNode(wmNode* parent, wmWindow* window, wmNode** left, wmNode** right, unsigned width, unsigned* outWidth) {
+    for (int i = 0; i < parent->numChildren; i++) {
+        wmNode* child = parent->nodes + i;
+        if (child->window == window || findLeftNode(child, window, left, right, parent->orientation == HORIZONTAL ? (child->weight * width) : width, outWidth)) {
+            if (*left == NULL && *right == NULL && parent->orientation == HORIZONTAL && i != 0) {
+                *left = &parent->nodes[i - 1];
+                *right = child;
+                *outWidth = width;
+            }
+
+            return 1;
+        }
+    }
+
+    return 0;
+}
+static int findRightNode(wmNode* parent, wmWindow* window, wmNode** left, wmNode** right, unsigned width, unsigned* outWidth) {
+    for (int i = 0; i < parent->numChildren; i++) {
+        wmNode* child = parent->nodes + i;
+        if (child->window == window || findRightNode(child, window, left, right, parent->orientation == HORIZONTAL ? (child->weight * width) : width, outWidth)) {
+            if (*left == NULL && *right == NULL && parent->orientation == HORIZONTAL && (i + 1) < parent->numChildren) {
+                *left = child;
+                *right = &parent->nodes[i + 1];
+                *outWidth = width;
+            }
+
+            return 1;
+        }
+    }
+
+    return 0;
+}
+static int findUpperNode(wmNode* parent, wmWindow* window, wmNode** top, wmNode** bottom, unsigned height, unsigned* outHeight) {
+    for (int i = 0; i < parent->numChildren; i++) {
+        wmNode* child = parent->nodes + i;
+        if (child->window == window || findUpperNode(child, window, top, bottom, parent->orientation == VERTICAL ? (child->weight * height) : height, outHeight)) {
+            if (*top == NULL && *bottom == NULL && parent->orientation == VERTICAL && i != 0) {
+                *top = &parent->nodes[i - 1];
+                *bottom = child;
+                *outHeight = height;
+            }
+
+            return 1;
+        }
+    }
+
+    return 0;
+}
+static int findLowerNode(wmNode* parent, wmWindow* window, wmNode** top, wmNode** bottom, unsigned height, unsigned* outHeight) {
+    for (int i = 0; i < parent->numChildren; i++) {
+        wmNode* child = parent->nodes + i;
+        if (child->window == window || findLowerNode(child, window, top, bottom, parent->orientation == VERTICAL ? (child->weight * height) : height, outHeight)) {
+            if (*top == NULL && *bottom == NULL && parent->orientation == VERTICAL && (i + 1) < parent->numChildren) {
+                *top = child;
+                *bottom = &parent->nodes[i + 1];
+                *outHeight = height;
+            }
+
+            return 1;
+        }
+    }
+
+    return 0;
+}
+static void moveEdge(int (*finder)(wmNode*, wmWindow*, wmNode**, wmNode**, unsigned, unsigned*), unsigned direction, unsigned min, unsigned length) {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (!workspace->layout) {
+        return;
+    }
+
+    wmNode* a = NULL;
+    wmNode* b = NULL;
+    unsigned outLength;
+    finder(workspace->layout, workspace->activeWindow, &a, &b, length, &outLength);
+    if (a == b) {
+        return;
+    }
+
+    wmNode* smaller;
+    wmNode* bigger;
+
+    float sum = a->weight + b->weight;
+    if (direction) {
+        smaller = a;
+        bigger = b;
+    }
+    else {
+        smaller = b;
+        bigger = a;
+    }
+
+    smaller->weight -= resizeChange;
+    bigger->weight += resizeChange;
+
+    float minWeight = min / (float)outLength;
+    if (smaller->weight < min) {
+        smaller->weight = minWeight;
+        bigger->weight = sum - minWeight;
+    }
+
+    wmShowActiveWorkspace();
+}
+
 static wmNode* findNode(wmNode* node, wmWindow* window) {
     if (node->window == window) {
         return node;
@@ -163,32 +266,44 @@ static wmNode* removeWindowFromNode(wmNode* node, wmWindow* window) {
             node->numChildren--;
             if (node->numChildren == 1) {
                 wmNode lastOne = node->nodes[1 ^ i];
+                lastOne.weight = node->weight;
                 free(node->nodes);
                 memcpy(node, &lastOne, sizeof(wmNode));
             }
             else {
                 memcpy(child, child + 1, (node->numChildren - i) * sizeof(wmNode));
                 node->nodes = realloc(node->nodes, node->numChildren * sizeof(wmNode));
+
+                float weight = 1.0f / node->numChildren;
+                for (int j = 0; j < node->numChildren; j++) {
+                    node->nodes[j].weight = weight;
+                }
             }
+
             return node;
         }
 
-        if (removeWindowFromNode(child, window)) {
-            return node;
+        wmNode* found = removeWindowFromNode(child, window);
+        if (found) {
+            return found;
         }
     }
 
     return NULL;
 }
 static wmNode* addWindowToNode(wmNode* node, wmWindow* window, unsigned split) {
-    if (split) {
+    if (split || node->window) {
         wmNode oldNode = *node;
+        node->orientation = wmSplitOrientation == NONE ? node->orientation : wmSplitOrientation;
         node->nodes = calloc(2, sizeof(wmNode));
+        node->window = NULL;
+        node->numChildren = 2;
+
         node->nodes[0] = oldNode;
         node->nodes[1].window = window;
-        node->orientation = wmSplitOrientation == NONE ? node->orientation : wmSplitOrientation;
-        node->numChildren = 2;
-        node->window = NULL;
+        node->nodes[0].weight = 0.5f;
+        node->nodes[1].weight = 0.5f;
+
         wmSplitOrientation = !wmSplitOrientation;
         return &node->nodes[1];
     }
@@ -196,20 +311,17 @@ static wmNode* addWindowToNode(wmNode* node, wmWindow* window, unsigned split) {
     if (node->nodes) {
         node->numChildren++;
         node->nodes = realloc(node->nodes, node->numChildren * sizeof(wmNode));
+
         int index = node->numChildren - 1;
         wmNode newNode = { 0, NULL, window };
         node->nodes[index] = newNode;
+
+        float weight = 1.0f / node->numChildren;
+        for (int i = 0; i < node->numChildren; i++) {
+            node->nodes[i].weight = weight;
+        }
+
         return &node->nodes[index];
-    }
-    else if (node->window) {
-        node->nodes = calloc(2, sizeof(wmNode));
-        node->nodes[0].window = node->window;
-        node->nodes[1].window = window;
-        node->orientation = wmSplitOrientation;
-        node->numChildren = 2;
-        node->window = NULL;
-        wmSplitOrientation = !wmSplitOrientation;
-        return &node->nodes[1];
     }
     else {
         logmsg("addWindowToNode ERROR");
@@ -234,13 +346,11 @@ static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
     if (!*layout) {
         *layout = calloc(1, sizeof(wmNode));
         (*layout)->window = window;
+        (*layout)->weight = 1.0f;
+        (*layout)->orientation = HORIZONTAL;
         workspace->splitNode = *layout;
     }
     else {
-        if ((*layout)->window) {
-            wmSplitOrientation = HORIZONTAL;
-        }
-
         workspace->splitNode = addWindowToNode(workspace->splitNode, window, wmSplitOrientation != NONE);
     }
 }
@@ -256,19 +366,19 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
     else {
         wmNode* child;
         if (node->orientation == HORIZONTAL) {
-            width = width / node->numChildren;
             for (int i = 0; i < node->numChildren; i++) {
                 child = node->nodes + i;
-                showNode(child, x, y, width, height);
-                x += (int)width;
+                int w = child->weight * width;
+                showNode(child, x, y, w, height);
+                x += w;
             }
         }
         else {
-            height = height / node->numChildren;
             for (int i = 0; i < node->numChildren; i++) {
                 child = node->nodes + i;
-                showNode(child, x, y, width, height);
-                y += (int)height;
+                int h = child->weight * height;
+                showNode(child, x, y, width, h);
+                y += h;
             }
         }
     }
@@ -702,4 +812,17 @@ void wmUpdateBorders() {
     if (workspace->layout) {
         updateBorders(workspace->layout, workspace->layout == workspace->splitNode);
     }
+}
+
+void wmMoveLeftEdgeHorizontally(wmHorizontalDirection direction) {
+    moveEdge(findLeftNode, direction, wmScreenWidth, minWidth);
+}
+void wmMoveRightEdgeHorizontally(wmHorizontalDirection direction) {
+    moveEdge(findRightNode, direction, wmScreenWidth, minWidth);
+}
+void wmMoveUpperEdgeVertically(wmVerticalDirection direction) {
+    moveEdge(findUpperNode, direction, wmScreenHeight, minHeight);
+}
+void wmMoveLowerEdgeVertically(wmVerticalDirection direction) {
+    moveEdge(findLowerNode, direction, wmScreenHeight, minHeight);
 }

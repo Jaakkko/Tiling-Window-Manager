@@ -21,6 +21,9 @@ struct wmWindow {
 wmWindow* wmHead;
 wmWindow* wmTail;
 
+typedef enum { RIGHT, LEFT } wmHorizontalDirection;
+typedef enum { DOWN, UP } wmVerticalDirection;
+
 typedef enum { HORIZONTAL, VERTICAL, NONE } wmSplitMode;
 wmSplitMode wmSplitOrientation;
 
@@ -30,6 +33,7 @@ struct wmNode {
     wmNode* nodes;
     wmWindow* window;
     wmSplitMode orientation;
+    float weight;
 };
 typedef struct {
     wmWindow* activeWindow;
@@ -91,5 +95,10 @@ void wmShowActiveWorkspace();
 void wmLowerSplit(wmSplitMode orientation);
 void wmRaiseSplit(wmSplitMode orientation);
 void wmUpdateBorders();
+
+void wmMoveLeftEdgeHorizontally(wmHorizontalDirection direction);
+void wmMoveRightEdgeHorizontally(wmHorizontalDirection direction);
+void wmMoveUpperEdgeVertically(wmVerticalDirection direction);
+void wmMoveLowerEdgeVertically(wmVerticalDirection direction);
 
 #endif //WM_INSTANCE_H

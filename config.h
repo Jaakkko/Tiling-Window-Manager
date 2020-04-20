@@ -13,6 +13,10 @@
 
 #define WINDOW_MANAGER_NAME "X11 Window Manager"
 
+static const float    resizeChange = 0.15;
+static const unsigned minWidth     = 200;
+static const unsigned minHeight    = 200;
+
 //                                          AARRGGBB
 static const unsigned borderColorSplit  = 0xff50fa78;
 static const unsigned borderColorActive = 0xfff7eb60;
@@ -32,19 +36,27 @@ static const char* startupScriptBath = "~/.config/wm/startup.sh";
 
 static const KeyBinding keyBindings[] = {
         // Modifier                    Key          Function                Argument
-        { MOD | ControlMask,  XK_Q,        quit,                   { .i = 130             } },
-        { MOD | ShiftMask,    XK_Q,        quit,                   { .i = 0               } },
-        { MOD,                XK_Q,        closeActiveWindow,      {                      } },
-        { MOD,                XK_J,        focus,                  { .i = +1              } },
-        { MOD,                XK_K,        focus,                  { .i = -1              } },
-        { MOD,                XK_Return,   openApplication,        { .v = "alacritty"     } },
-        { MOD,                XK_Z,        clearSplitHints,        {                      } },
-        { MOD,                XK_X,        raiseSplit,             { .i = NONE            } },
-        { MOD,                XK_C,        raiseSplit,             { .i = HORIZONTAL      } },
-        { MOD,                XK_V,        raiseSplit,             { .i = VERTICAL        } },
-        { MOD | ControlMask,  XK_X,        lowerSplit,             { .i = NONE            } },
-        { MOD | ControlMask,  XK_C,        lowerSplit,             { .i = HORIZONTAL      } },
-        { MOD | ControlMask,  XK_V,        lowerSplit,             { .i = VERTICAL        } },
+        { MOD | ControlMask,  XK_Q,        quit,                      { .i = 130             } },
+        { MOD | ShiftMask,    XK_Q,        quit,                      { .i = 0               } },
+        { MOD,                XK_Q,        closeActiveWindow,         {                      } },
+        { MOD,                XK_J,        focus,                     { .i = +1              } },
+        { MOD,                XK_K,        focus,                     { .i = -1              } },
+        { MOD,                XK_Return,   openApplication,           { .v = "alacritty"     } },
+        { MOD,                XK_Z,        clearSplitHints,           {                      } },
+        { MOD,                XK_X,        raiseSplit,                { .i = NONE            } },
+        { MOD,                XK_C,        raiseSplit,                { .i = HORIZONTAL      } },
+        { MOD,                XK_V,        raiseSplit,                { .i = VERTICAL        } },
+        { MOD | ControlMask,  XK_X,        lowerSplit,                { .i = NONE            } },
+        { MOD | ControlMask,  XK_C,        lowerSplit,                { .i = HORIZONTAL      } },
+        { MOD | ControlMask,  XK_V,        lowerSplit,                { .i = VERTICAL        } },
+        { MOD | ControlMask,  XK_H,        moveLeftEdgeHorizontally,  { .i = LEFT            } },
+        { MOD | ControlMask,  XK_L,        moveLeftEdgeHorizontally,  { .i = RIGHT           } },
+        { MOD | Mod1Mask,     XK_H,        moveRightEdgeHorizontally, { .i = LEFT            } },
+        { MOD | Mod1Mask,     XK_L,        moveRightEdgeHorizontally, { .i = RIGHT           } },
+        { MOD | ControlMask,  XK_K,        moveUpperEdgeVertically,   { .i = UP              } },
+        { MOD | ControlMask,  XK_J,        moveUpperEdgeVertically,   { .i = DOWN            } },
+        { MOD | Mod1Mask,     XK_K,        moveLowerEdgeVertically,   { .i = UP              } },
+        { MOD | Mod1Mask,     XK_J,        moveLowerEdgeVertically,   { .i = DOWN            } },
 
         WORKSPACE(1)
         WORKSPACE(2)

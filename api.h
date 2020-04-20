@@ -18,8 +18,12 @@ void quit(Arg);
 void selectWorkspace(Arg);
 void moveToWorkspace(Arg);
 void toggleToWorkspace(Arg);
-void lowerSplit(Arg a);
+void lowerSplit(Arg);
 void raiseSplit(Arg);
 void clearSplitHints(Arg);
+void moveLeftEdgeHorizontally(Arg);
+void moveRightEdgeHorizontally(Arg);
+void moveUpperEdgeVertically(Arg);
+void moveLowerEdgeVertically(Arg);
 
 #endif //WM_API_H
