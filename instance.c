@@ -335,6 +335,9 @@ static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
         free(workspace->layout);
         workspace->layout = NULL;
     }
+    else if (workspace->layout->window) {
+        wmSplitOrientation = HORIZONTAL;
+    }
 
     workspace->splitNode = parent;
     workspace->showSplitBorder = 0;
@@ -735,6 +738,10 @@ wmWindow* wmWindowTowmWindow(Window window) {
 void wmSelectWorkspace(unsigned workspaceIndex) {
     wmActiveWorkspace = workspaceIndex;
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (!workspace->layout || workspace->layout->window) {
+        wmSplitOrientation = HORIZONTAL;
+    }
+
     workspace->showSplitBorder = 0;
     wmUpdateBorders();
     wmShowActiveWorkspace();
