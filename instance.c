@@ -699,19 +699,9 @@ void wmFreeWindow(wmWindow* window) {
     for (int i = 0; i < WORKSPACE_COUNT; i++) {
         unsigned mask = 1 << i;
         if (window->workspaces & mask) {
-            wmWindow* activeWindow = wmWorkspaces[i].activeWindow;
-            if (activeWindow) {
-                while (1) {
-                    activeWindow = activeWindow->next ? activeWindow->next : wmHead;
-                    if (activeWindow == wmWorkspaces[i].activeWindow) {
-                        wmWorkspaces[i].activeWindow = NULL;
-                        break;
-                    }
-                    if (activeWindow->workspaces & mask) {
-                        wmWorkspaces[i].activeWindow = activeWindow;
-                        break;
-                    }
-                }
+            wmWindow** activeWindow = &wmWorkspaces[i].activeWindow;
+            if (*activeWindow == window) {
+                *activeWindow = wmNextVisibleWindow(i);
             }
 
             removeWindowFromLayout(&wmWorkspaces[i], window);
