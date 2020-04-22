@@ -181,7 +181,7 @@ static int findLowerNode(wmNode* parent, wmWindow* window, wmNode** top, wmNode*
 
     return 0;
 }
-static void moveEdge(int (*finder)(wmNode*, wmWindow*, wmNode**, wmNode**, unsigned, unsigned*), unsigned direction, unsigned min, unsigned length) {
+static void moveEdge(int (*finder)(wmNode*, wmWindow*, wmNode**, wmNode**, unsigned, unsigned*), unsigned direction, unsigned length, unsigned minLength) {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     if (!workspace->layout) {
         return;
@@ -211,8 +211,8 @@ static void moveEdge(int (*finder)(wmNode*, wmWindow*, wmNode**, wmNode**, unsig
     smaller->weight -= resizeChange;
     bigger->weight += resizeChange;
 
-    float minWeight = min / (float)outLength;
-    if (smaller->weight < min) {
+    float minWeight = minLength / (float)outLength;
+    if (smaller->weight < minWeight) {
         smaller->weight = minWeight;
         bigger->weight = sum - minWeight;
     }
