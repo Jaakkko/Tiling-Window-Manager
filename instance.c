@@ -336,9 +336,7 @@ static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
         workspace->layout = NULL;
     }
 
-    if (workspace->activeWindow) {
-        workspace->splitNode = findNode(workspace->layout, workspace->activeWindow);
-    }
+    workspace->splitNode = parent;
     workspace->showSplitBorder = 0;
 }
 static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
