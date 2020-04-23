@@ -419,6 +419,7 @@ static int errorHandler(Display* d, XErrorEvent* e) {
 static void initAtoms() {
     WM_PROTOCOLS                    = XInternAtom(wmDisplay, "WM_PROTOCOLS", False);
     WM_DELETE_WINDOW                = XInternAtom(wmDisplay, "WM_DELETE_WINDOW", False);
+    WM_STATE                        = XInternAtom(wmDisplay, "WM_STATE", False);
     _NET_SUPPORTED                  = XInternAtom(wmDisplay, "_NET_SUPPORTED", False);
     _NET_CLIENT_LIST                = XInternAtom(wmDisplay, "_NET_CLIENT_LIST", False);
     _NET_SUPPORTING_WM_CHECK        = XInternAtom(wmDisplay, "_NET_SUPPORTING_WM_CHECK", False);
@@ -737,14 +738,19 @@ void wmSelectWorkspace(unsigned workspaceIndex) {
     wmShowActiveWorkspace();
 }
 void wmShowActiveWorkspace() {
-    unsigned mask = 1 << wmActiveWorkspace;
+    int mask = 1 << wmActiveWorkspace;
     for (wmWindow* window = wmHead; window; window = window->next) {
+        long data[2] = { None, None };
         if (window->workspaces & mask) {
             XMapWindow(wmDisplay, window->frame);
+            data[0] = NormalState;
         }
         else {
             XUnmapWindow(wmDisplay, window->frame);
+            data[0] = WithdrawnState;
         }
+
+        XChangeProperty(wmDisplay, window->window, WM_STATE, WM_STATE, 32, PropModeReplace, (unsigned char*)data, 2);
     }
 
     if (fullscreen) {

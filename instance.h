@@ -59,6 +59,7 @@ int wmScreenHeight;
 Atom
     WM_PROTOCOLS,
     WM_DELETE_WINDOW,
+    WM_STATE,
     _NET_SUPPORTED,
     _NET_CLIENT_LIST,
     _NET_SUPPORTING_WM_CHECK,
