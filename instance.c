@@ -363,6 +363,20 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         width -= 2 * (gap + borderWidth);
         XMoveResizeWindow(wmDisplay, node->window->frame, x, y, width, height);
         XResizeWindow(wmDisplay, node->window->window, width, height);
+
+        XConfigureEvent event;
+        event.type = ConfigureNotify;
+        event.border_width = 0;
+        event.x = x + borderWidth;
+        event.y = y + borderWidth;
+        event.width = width;
+        event.height = height;
+        event.display = wmDisplay;
+        event.event = node->window->window;
+        event.window = node->window->window;
+        event.above = None;
+        event.override_redirect = False;
+        XSendEvent(wmDisplay, node->window->window, False, StructureNotifyMask, (XEvent*)&event);
     }
     else {
         wmNode* child;
