@@ -32,6 +32,66 @@ int wmExitCode = 0;
 static Window wmcheckwin;
 static wmWindow* fullscreen = NULL;
 
+static int estimateNewWindowSize(wmNode* node, wmNode* target, int *x, int *y, unsigned *width, unsigned *height) {
+    if (node == target) {
+        wmSplitMode orientation;
+        float div;
+        if (wmSplitOrientation != NONE || target->window) {
+            orientation = target->window ? target->orientation : wmSplitOrientation;
+            div = 2.0f;
+        }
+        else {
+            orientation = node->orientation;
+            div = target->numChildren + 1;
+        }
+
+        if (orientation == VERTICAL) {
+            *height /= div;
+            *y += *height * ((unsigned)div - 1);
+        }
+        else {
+            *width /= div;
+            *x += *width * ((unsigned)div - 1);
+        }
+
+        *x += gap;
+        *y += gap;
+        *width -= 2 * (gap + borderWidth);
+        *height -= 2 * (gap + borderWidth);
+
+        return 1;
+    }
+    else {
+        wmNode* child;
+        if (node->orientation == HORIZONTAL) {
+            for (int i = 0; i < node->numChildren; i++) {
+                child = node->nodes + i;
+                unsigned w = *width;
+                w = child->weight * *width;
+                if (estimateNewWindowSize(child, target, x, y, &w, height)) {
+                    *width = w;
+                    return 1;
+                }
+                *x += w;
+            }
+        }
+        else {
+            for (int i = 0; i < node->numChildren; i++) {
+                child = node->nodes + i;
+                unsigned h = *height;
+                h = child->weight * *height;
+                if (estimateNewWindowSize(child, target, x, y, width, &h)) {
+                    *height = h;
+                    return 1;
+                }
+                *y += h;
+            }
+        }
+    }
+
+    return 0;
+}
+
 static void stateHandler(XClientMessageEvent* event) {
     if (event->data.l[1] == _NET_WM_STATE_FULLSCREEN) {
         wmWindow* window = wmWindowTowmWindow(event->window);
@@ -57,9 +117,26 @@ static void stateHandler(XClientMessageEvent* event) {
         }
     }
 }
+static void requestFrameExtents(XClientMessageEvent* event) {
+    int x = gap;
+    int y = gap;
+    unsigned width = wmScreenWidth - 2 * gap;
+    unsigned height = wmScreenHeight - 2 * gap;
+
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (!workspace->layout) {
+        return;
+    }
+
+    estimateNewWindowSize(workspace->layout, workspace->splitNode, &x, &y, &width, &height);
+
+    long bounds[] = { x, y, x + width, y + height };
+    XChangeProperty(wmDisplay, event->window, _NET_FRAME_EXTENTS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)bounds, 4);
+}
 
 ClientMessageHandler clientMessageHandler[] = {
-        { &_NET_WM_STATE, stateHandler }
+        { &_NET_WM_STATE,               stateHandler        },
+        { &_NET_REQUEST_FRAME_EXTENTS,  requestFrameExtents },
 };
 const unsigned clientMessageHandlersCount = LENGTH(clientMessageHandler);
 
@@ -437,6 +514,8 @@ static void initAtoms() {
     _NET_SUPPORTED                  = XInternAtom(wmDisplay, "_NET_SUPPORTED", False);
     _NET_CLIENT_LIST                = XInternAtom(wmDisplay, "_NET_CLIENT_LIST", False);
     _NET_SUPPORTING_WM_CHECK        = XInternAtom(wmDisplay, "_NET_SUPPORTING_WM_CHECK", False);
+    _NET_REQUEST_FRAME_EXTENTS      = XInternAtom(wmDisplay, "_NET_REQUEST_FRAME_EXTENTS", False);
+    _NET_FRAME_EXTENTS              = XInternAtom(wmDisplay, "_NET_FRAME_EXTENTS", False);
     _NET_WM_NAME                    = XInternAtom(wmDisplay, "_NET_WM_NAME", False);
     _NET_WM_STATE                   = XInternAtom(wmDisplay, "_NET_WM_STATE", False);
     _NET_WM_STATE_FULLSCREEN        = XInternAtom(wmDisplay, "_NET_WM_STATE_FULLSCREEN", False);
