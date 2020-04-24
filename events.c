@@ -17,6 +17,30 @@ void wmKeyPress(XEvent event) {
     }
 }
 
+void wmButtonPress(XEvent event) {
+    XButtonEvent* e = &event.xbutton;
+    if (e->state == 0 && e->button == Button1) {
+        wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
+        if (activeWindow && activeWindow->window != e->window) {
+            wmWindow* window = wmWindowTowmWindow(e->window);
+            if (window && wmWorkspaces[wmActiveWorkspace].activeWindow != window) {
+                wmFocusWindow(window);
+            }
+        }
+        XAllowEvents(wmDisplay, ReplayPointer, CurrentTime);
+    }
+}
+
+void wmEnterNotify(XEvent event) {
+    XCrossingEvent* ev = &event.xcrossing;
+    if (ev->mode == NotifyNormal) {
+        wmWindow* window = wmWindowTowmWindow(ev->window);
+        if (window) {
+            wmFocusWindow(window);
+        }
+    }
+}
+
 void wmConfigureRequest(XEvent event) {
     wmWindow* window = wmWindowTowmWindow(event.xconfigurerequest.window);
     if (window) {
@@ -58,6 +82,8 @@ void wmClientMessage(XEvent event) {
 
 void (*handler[LASTEvent])(XEvent) = {
         [KeyPress] = wmKeyPress,
+        [ButtonPress] = wmButtonPress,
+        [EnterNotify] = wmEnterNotify,
         [ConfigureRequest] = wmConfigureRequest,
         [MapRequest] = wmMapRequest,
         [DestroyNotify] = wmDestroyNotify,

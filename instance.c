@@ -779,7 +779,10 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
 
     XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&window, 1);
 
+    XGrabButton(wmDisplay, Button1, 0, window, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+
     XSelectInput(wmDisplay, frame, SubstructureNotifyMask | SubstructureRedirectMask);
+    XSelectInput(wmDisplay, window, EnterWindowMask | FocusChangeMask);
     XReparentWindow(wmDisplay, window, frame, 0, 0);
     XMapWindow(wmDisplay, window);
 
