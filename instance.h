@@ -34,6 +34,10 @@ struct wmNode {
     wmWindow* window;
     wmSplitMode orientation;
     float weight;
+    int x;
+    int y;
+    unsigned width;
+    unsigned height;
 };
 typedef struct {
     wmWindow* activeWindow;
@@ -103,5 +107,7 @@ void wmMoveLeftEdgeHorizontally(wmHorizontalDirection direction);
 void wmMoveRightEdgeHorizontally(wmHorizontalDirection direction);
 void wmMoveUpperEdgeVertically(wmVerticalDirection direction);
 void wmMoveLowerEdgeVertically(wmVerticalDirection direction);
+
+void wmConfigureWindow(wmWindow* window);
 
 #endif //WM_INSTANCE_H

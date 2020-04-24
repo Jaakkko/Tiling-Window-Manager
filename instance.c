@@ -297,6 +297,22 @@ static void moveEdge(int (*finder)(wmNode*, wmWindow*, wmNode**, wmNode**, unsig
     wmShowActiveWorkspace();
 }
 
+static void configureNode(wmNode* node) {
+    XConfigureEvent event;
+    event.type = ConfigureNotify;
+    event.border_width = 0;
+    event.x = node->x + borderWidth;
+    event.y = node->y + borderWidth;
+    event.width = node->width;
+    event.height = node->height;
+    event.display = wmDisplay;
+    event.event = node->window->window;
+    event.window = node->window->window;
+    event.above = None;
+    event.override_redirect = False;
+    XSendEvent(wmDisplay, node->window->window, False, StructureNotifyMask, (XEvent*)&event);
+    XSync(wmDisplay, False);
+}
 static wmNode* findNode(wmNode* node, wmWindow* window) {
     if (node->window == window) {
         return node;
@@ -441,19 +457,12 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         XMoveResizeWindow(wmDisplay, node->window->frame, x, y, width, height);
         XResizeWindow(wmDisplay, node->window->window, width, height);
 
-        XConfigureEvent event;
-        event.type = ConfigureNotify;
-        event.border_width = 0;
-        event.x = x + borderWidth;
-        event.y = y + borderWidth;
-        event.width = width;
-        event.height = height;
-        event.display = wmDisplay;
-        event.event = node->window->window;
-        event.window = node->window->window;
-        event.above = None;
-        event.override_redirect = False;
-        XSendEvent(wmDisplay, node->window->window, False, StructureNotifyMask, (XEvent*)&event);
+        node->x = x;
+        node->y = y;
+        node->width = width;
+        node->height = height;
+
+        configureNode(node);
     }
     else {
         wmNode* child;
@@ -919,4 +928,16 @@ void wmMoveUpperEdgeVertically(wmVerticalDirection direction) {
 }
 void wmMoveLowerEdgeVertically(wmVerticalDirection direction) {
     moveEdge(findLowerNode, direction, wmScreenHeight, minHeight);
+}
+
+void wmConfigureWindow(wmWindow* window) {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (!workspace->layout) {
+        return;
+    }
+
+    wmNode* node = findNode(workspace->layout, window);
+    if (node) {
+        configureNode(node);
+    }
 }

@@ -17,6 +17,13 @@ void wmKeyPress(XEvent event) {
     }
 }
 
+void wmConfigureRequest(XEvent event) {
+    wmWindow* window = wmWindowTowmWindow(event.xconfigurerequest.window);
+    if (window) {
+        wmConfigureWindow(window);
+    }
+}
+
 void wmMapRequest(XEvent event) {
     Window window = event.xmaprequest.window;
 
@@ -51,6 +58,7 @@ void wmClientMessage(XEvent event) {
 
 void (*handler[LASTEvent])(XEvent) = {
         [KeyPress] = wmKeyPress,
+        [ConfigureRequest] = wmConfigureRequest,
         [MapRequest] = wmMapRequest,
         [DestroyNotify] = wmDestroyNotify,
         [ClientMessage] = wmClientMessage,

@@ -8,6 +8,7 @@
 #include <X11/Xlib.h>
 
 void wmKeyPress(XEvent event);
+void wmConfigureRequest(XEvent event);
 void wmMapRequest(XEvent event);
 void wmDestroyNotify(XEvent event);
 void wmClientMessage(XEvent event);
