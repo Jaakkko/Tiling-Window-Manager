@@ -92,6 +92,17 @@ static int estimateNewWindowSize(wmNode* node, wmNode* target, int *x, int *y, u
     return 0;
 }
 
+static void setActiveWindow(wmWorkspace* workspace, wmWindow* window) {
+    if (window == NULL) {
+        XDeleteProperty(wmDisplay, wmRoot, _NET_ACTIVE_WINDOW);
+    }
+    else {
+        XChangeProperty(wmDisplay, wmRoot, _NET_ACTIVE_WINDOW, XA_WINDOW, 32, PropModeReplace, (unsigned char*)&window->window, 1);
+    }
+
+    workspace->activeWindow = window;
+}
+
 static void stateHandler(XClientMessageEvent* event) {
     if (event->data.l[1] == _NET_WM_STATE_FULLSCREEN) {
         wmWindow* window = wmWindowTowmWindow(event->window);
@@ -133,10 +144,19 @@ static void requestFrameExtents(XClientMessageEvent* event) {
     long bounds[] = { x, y, x + width, y + height };
     XChangeProperty(wmDisplay, event->window, _NET_FRAME_EXTENTS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)bounds, 4);
 }
+static void netActiveWindow(XClientMessageEvent* event) {
+    wmWindow* window = wmWindowTowmWindow(event->window);
+    if (window) {
+        setActiveWindow(&wmWorkspaces[wmActiveWorkspace], window);
+        wmUpdateBorders();
+    }
+}
+
 
 ClientMessageHandler clientMessageHandler[] = {
         { &_NET_WM_STATE,               stateHandler        },
         { &_NET_REQUEST_FRAME_EXTENTS,  requestFrameExtents },
+        { &_NET_ACTIVE_WINDOW,          netActiveWindow     },
 };
 const unsigned clientMessageHandlersCount = LENGTH(clientMessageHandler);
 
@@ -522,6 +542,7 @@ static void initAtoms() {
     WM_STATE                        = XInternAtom(wmDisplay, "WM_STATE", False);
     _NET_SUPPORTED                  = XInternAtom(wmDisplay, "_NET_SUPPORTED", False);
     _NET_CLIENT_LIST                = XInternAtom(wmDisplay, "_NET_CLIENT_LIST", False);
+    _NET_ACTIVE_WINDOW              = XInternAtom(wmDisplay, "_NET_ACTIVE_WINDOW", False);
     _NET_SUPPORTING_WM_CHECK        = XInternAtom(wmDisplay, "_NET_SUPPORTING_WM_CHECK", False);
     _NET_REQUEST_FRAME_EXTENTS      = XInternAtom(wmDisplay, "_NET_REQUEST_FRAME_EXTENTS", False);
     _NET_FRAME_EXTENTS              = XInternAtom(wmDisplay, "_NET_FRAME_EXTENTS", False);
@@ -533,6 +554,7 @@ static void initAtoms() {
             _NET_SUPPORTED,
             _NET_CLIENT_LIST,
             _NET_SUPPORTING_WM_CHECK,
+            _NET_ACTIVE_WINDOW,
             _NET_WM_NAME,
             _NET_WM_STATE,
             _NET_WM_STATE_FULLSCREEN,
@@ -688,7 +710,7 @@ void wmMoveActiveWindow(unsigned workspace) {
 
             destination->activeWindow = source->activeWindow;
             destination->activeWindow->workspaces = 1U << workspace;
-            source->activeWindow = wmNextVisibleWindow(wmActiveWorkspace);
+            setActiveWindow(source, wmNextVisibleWindow(wmActiveWorkspace));
             wmUpdateBorders();
             wmShowActiveWorkspace();
         }
@@ -711,7 +733,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
         }
         else {
             removeWindowFromLayout(workspace, activeWindow);
-            workspace->activeWindow = wmNextVisibleWindow(workspaceIndex);
+            setActiveWindow(workspace, wmNextVisibleWindow(workspaceIndex));
         }
 
         wmWorkspaces[wmActiveWorkspace].showSplitBorder = 0;
@@ -725,7 +747,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
 
 void wmFocusWindow(wmWindow* window) {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    workspace->activeWindow = window;
+    setActiveWindow(workspace, window);
     workspace->showSplitBorder = 0;
     workspace->splitNode = findNode(workspace->layout, workspace->activeWindow);
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
@@ -794,7 +816,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     addWindowToLayout(workspace, new_wmWindow);
-    workspace->activeWindow = new_wmWindow;
+    setActiveWindow(workspace, new_wmWindow);
     workspace->showSplitBorder = 0;
     wmUpdateBorders();
 }
@@ -805,11 +827,11 @@ void wmFreeWindow(wmWindow* window) {
     for (int i = 0; i < WORKSPACE_COUNT; i++) {
         unsigned mask = 1 << i;
         if (window->workspaces & mask) {
-            wmWindow** activeWindow = &wmWorkspaces[i].activeWindow;
-            if (*activeWindow == window) {
-                *activeWindow = wmNextVisibleWindow(i);
+            wmWorkspace* workspace = &wmWorkspaces[i];
+            wmWindow* activeWindow = workspace->activeWindow;
+            if (activeWindow == window) {
+                setActiveWindow(workspace, wmNextVisibleWindow(i));
             }
-
             removeWindowFromLayout(&wmWorkspaces[i], window);
         }
     }
@@ -838,6 +860,7 @@ void wmSelectWorkspace(unsigned workspaceIndex) {
         wmSplitOrientation = HORIZONTAL;
     }
 
+    setActiveWindow(workspace, workspace->activeWindow);
     workspace->showSplitBorder = 0;
     wmUpdateBorders();
     wmShowActiveWorkspace();
