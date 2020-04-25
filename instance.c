@@ -19,6 +19,8 @@
 
 unsigned wmActiveWorkspace = 0;
 
+wmDialog* wmDialogs = NULL;
+
 wmWindow* wmHead = NULL;
 wmWindow* wmTail = NULL;
 
@@ -336,20 +338,20 @@ static void moveEdge(int (*finder)(wmNode*, wmWindow*, wmNode**, wmNode**, unsig
     wmShowActiveWorkspace();
 }
 
-static void configureNode(wmNode* node) {
+static void configureWindow(Window window, int x, int y, unsigned width, unsigned height) {
     XConfigureEvent event;
     event.type = ConfigureNotify;
     event.border_width = 0;
-    event.x = node->x + borderWidth;
-    event.y = node->y + borderWidth;
-    event.width = node->width;
-    event.height = node->height;
+    event.x = x + borderWidth;
+    event.y = y + borderWidth;
+    event.width = width;
+    event.height = height;
     event.display = wmDisplay;
-    event.event = node->window->window;
-    event.window = node->window->window;
+    event.event = window;
+    event.window = window;
     event.above = None;
     event.override_redirect = False;
-    XSendEvent(wmDisplay, node->window->window, False, StructureNotifyMask, (XEvent*)&event);
+    XSendEvent(wmDisplay, window, False, StructureNotifyMask, (XEvent*)&event);
     XSync(wmDisplay, False);
 }
 static wmNode* findNode(wmNode* node, wmWindow* window) {
@@ -462,6 +464,10 @@ static wmNode* addWindowToNode(wmNode* node, wmWindow* window, unsigned split) {
     return NULL;
 }
 static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
+    if (window->dialog) {
+        return;
+    }
+
     wmNode* parent = removeWindowFromNode(workspace->layout, window);
     if (!parent) {
         free(workspace->layout);
@@ -475,6 +481,10 @@ static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
     workspace->showSplitBorder = 0;
 }
 static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
+    if (window->dialog) {
+        return;
+    }
+
     wmNode** layout = &workspace->layout;
     if (!*layout) {
         *layout = calloc(1, sizeof(wmNode));
@@ -501,7 +511,7 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         node->width = width;
         node->height = height;
 
-        configureNode(node);
+        configureWindow(node->window->window, node->x, node->y, node->width, node->height);
     }
     else {
         wmNode* child;
@@ -834,6 +844,35 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     new_wmWindow->workspaces = 1 << wmActiveWorkspace;
     attachWindow(new_wmWindow);
 
+    Window parent;
+    if (XGetTransientForHint(wmDisplay, window, &parent)) {
+        wmDialog* dialog = calloc(1, sizeof(wmDialog));
+        dialog->window = new_wmWindow;
+        dialog->width = MIN(attributes->width, wmScreenWidth);
+        dialog->height = MIN(attributes->height, wmScreenHeight);
+        new_wmWindow->dialog = dialog;
+
+        dialog->x = wmScreenWidth / 2 - dialog->width / 2;
+        dialog->y = wmScreenHeight / 2 - dialog->height / 2;
+        unsigned width = dialog->width - 2 * borderWidth;
+        unsigned height = dialog->height - 2 * borderWidth;
+
+        XMoveResizeWindow(
+                wmDisplay,
+                frame,
+                dialog->x,
+                dialog->y,
+                width,
+                height
+        );
+        XResizeWindow(wmDisplay, window, width, height);
+
+        configureWindow(window, dialog->x, dialog->y, width, height);
+
+        dialog->next = wmDialogs;
+        wmDialogs = dialog;
+    }
+
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     addWindowToLayout(workspace, new_wmWindow);
     setActiveWindow(workspace, new_wmWindow);
@@ -855,6 +894,15 @@ void wmFreeWindow(wmWindow* window) {
             removeWindowFromLayout(&wmWorkspaces[i], window);
         }
     }
+
+    if (window->dialog) {
+        wmDialog** next;
+        for (next = &wmDialogs; *next != window->dialog; next = &(*next)->next);
+        *next = (*next)->next;
+
+        free(window->dialog);
+    }
+
     detachWindow(window);
     free(window);
 
@@ -958,6 +1006,14 @@ void wmRaiseSplit(wmSplitMode orientation) {
 }
 void wmUpdateBorders() {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    for (wmDialog* d = wmDialogs; d; d = d->next) {
+        XSetWindowBorder(
+                wmDisplay,
+                d->window->frame,
+                d->window == workspace->activeWindow ? borderColorActive : borderColor
+        );
+    }
+
     if (workspace->layout) {
         updateBorders(workspace->layout, workspace->layout == workspace->splitNode);
     }
@@ -977,6 +1033,12 @@ void wmMoveLowerEdgeVertically(wmVerticalDirection direction) {
 }
 
 void wmConfigureWindow(wmWindow* window) {
+    wmDialog* dialog = window->dialog;
+    if (dialog) {
+        configureWindow(window->window, dialog->x, dialog->y, dialog->width, dialog->height);
+        return;
+    }
+
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     if (!workspace->layout) {
         return;
@@ -984,6 +1046,6 @@ void wmConfigureWindow(wmWindow* window) {
 
     wmNode* node = findNode(workspace->layout, window);
     if (node) {
-        configureNode(node);
+        configureWindow(window->window, node->x, node->y, node->width, node->height);
     }
 }

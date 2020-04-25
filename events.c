@@ -42,9 +42,22 @@ void wmEnterNotify(XEvent event) {
 }
 
 void wmConfigureRequest(XEvent event) {
-    wmWindow* window = wmWindowTowmWindow(event.xconfigurerequest.window);
+    XConfigureRequestEvent* ev = &event.xconfigurerequest;
+    wmWindow* window = wmWindowTowmWindow(ev->window);
     if (window) {
         wmConfigureWindow(window);
+    }
+    else {
+        XWindowChanges c;
+        c.x = ev->x;
+        c.y = ev->y;
+        c.width = ev->width;
+        c.height = ev->height;
+        c.border_width = ev->border_width;
+        c.sibling = ev->above;
+        c.stack_mode = ev->detail;
+        XConfigureWindow(wmDisplay, ev->window, ev->value_mask, &c);
+        XSync(wmDisplay, False);
     }
 }
 

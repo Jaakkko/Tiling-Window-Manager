@@ -10,13 +10,26 @@
 
 unsigned wmActiveWorkspace;
 
+typedef struct wmDialog wmDialog;
 typedef struct wmWindow wmWindow;
+
+struct wmDialog {
+    wmWindow* window;
+    int x;
+    int y;
+    unsigned width;
+    unsigned height;
+    wmDialog* next;
+};
+wmDialog* wmDialogs;
+
 struct wmWindow {
     wmWindow* next;
     wmWindow* previous;
     Window window;
     Window frame;
     unsigned workspaces;
+    wmDialog* dialog;
 };
 wmWindow* wmHead;
 wmWindow* wmTail;
