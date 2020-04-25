@@ -98,6 +98,25 @@ static void setActiveWindow(wmWorkspace* workspace, wmWindow* window) {
     }
     else {
         XChangeProperty(wmDisplay, wmRoot, _NET_ACTIVE_WINDOW, XA_WINDOW, 32, PropModeReplace, (unsigned char*)&window->window, 1);
+
+        int n;
+        Atom* protocols;
+        if (XGetWMProtocols(wmDisplay, window->window, &protocols, &n)) {
+            while (n--) {
+                if (protocols[n] == WM_TAKE_FOCUS) {
+                    XEvent e;
+                    e.type = ClientMessage;
+                    e.xclient.window = window->window;
+                    e.xclient.message_type = WM_PROTOCOLS;
+                    e.xclient.format = 32;
+                    e.xclient.data.l[0] = WM_TAKE_FOCUS;
+                    e.xclient.data.l[1] = CurrentTime;
+                    XSendEvent(wmDisplay, window->window, False, NoEventMask, &e);
+                }
+                break;
+            }
+            XFree(protocols);
+        }
     }
 
     workspace->activeWindow = window;
@@ -540,6 +559,7 @@ static void initAtoms() {
     WM_PROTOCOLS                    = XInternAtom(wmDisplay, "WM_PROTOCOLS", False);
     WM_DELETE_WINDOW                = XInternAtom(wmDisplay, "WM_DELETE_WINDOW", False);
     WM_STATE                        = XInternAtom(wmDisplay, "WM_STATE", False);
+    WM_TAKE_FOCUS                   = XInternAtom(wmDisplay, "WM_TAKE_FOCUS", False);
     _NET_SUPPORTED                  = XInternAtom(wmDisplay, "_NET_SUPPORTED", False);
     _NET_CLIENT_LIST                = XInternAtom(wmDisplay, "_NET_CLIENT_LIST", False);
     _NET_ACTIVE_WINDOW              = XInternAtom(wmDisplay, "_NET_ACTIVE_WINDOW", False);
