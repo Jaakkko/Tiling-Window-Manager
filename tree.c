@@ -41,12 +41,20 @@ wmNode* addNode(wmNode* parent, wmNode child, wmSplitMode splitOrientation) {
         parent->nodes[1].weight = 0.5;
 
         if (splitOrientation == VERTICAL) {
-            parent->width = 0;
-            parent->height = 1;
+            wmNode* node = parent->nodes;
+            node->width = 1;
+            node->height = 0;
+            node++;
+            node->width = 1;
+            node->height = 0;
         }
         else {
-            parent->width = 1;
-            parent->height = 0;
+            wmNode* node = parent->nodes;
+            node->width = 0;
+            node->height = 1;
+            node++;
+            node->width = 0;
+            node->height = 1;
         }
 
         return &parent->nodes[1];
