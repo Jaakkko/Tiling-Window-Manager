@@ -18,6 +18,10 @@
 #include <X11/Xatom.h>
 #include <X11/extensions/Xrender.h>
 
+int wmSkipNextEnterNotify = 0;
+int wmMouseX;
+int wmMouseY;
+
 unsigned wmActiveWorkspace = 0;
 
 wmDialog* wmDialogs = NULL;
@@ -281,10 +285,28 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         XMoveResizeWindow(wmDisplay, node->window->frame, x, y, width, height);
         XResizeWindow(wmDisplay, node->window->window, width, height);
 
+        int left = node->x;
+        int right = node->x + node->width;
+        int top = node->y;
+        int bottom = node->y + node->height;
+        int pointerWasInNode = 0;
+        if (wmMouseX >= left && wmMouseX <= right && wmMouseY >= top && wmMouseY <= bottom) {
+            pointerWasInNode = 1;
+        }
+
         node->x = x;
         node->y = y;
         node->width = width;
         node->height = height;
+
+        left = node->x;
+        right = node->x + node->width;
+        top = node->y;
+        bottom = node->y + node->height;
+        int pointerInNode = wmMouseX >= left && wmMouseX <= right && wmMouseY >= top && wmMouseY <= bottom;
+        if (pointerWasInNode && !pointerInNode) {
+            wmSkipNextEnterNotify = 1;
+        }
 
         configureWindow(node->window->window, node->x, node->y, node->width, node->height);
     }
@@ -739,6 +761,21 @@ void wmShowActiveWorkspace() {
         if (!layout) {
             return;
         }
+
+        /*
+        Bool XQueryPointer(display, w, root_return, child_return, root_x_return, root_y_return,
+                     win_x_return, win_y_return, mask_return)
+        Display *display;
+        Window w;
+        Window *root_return, *child_return;
+        int *root_x_return, *root_y_return;
+        int *win_x_return, *win_y_return;
+        unsigned int *mask_return;
+         */
+        Window root_return, child_return;
+        int winx, winy;
+        unsigned mask_return;
+        XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
 
         showNode(layout, gap, gap, wmScreenWidth - 2 * gap, wmScreenHeight - 2 * gap);
     }

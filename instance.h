@@ -10,6 +10,10 @@
 
 #include "types.h"
 
+int wmSkipNextEnterNotify;
+int wmMouseX;
+int wmMouseY;
+
 unsigned wmActiveWorkspace;
 
 wmDialog* wmDialogs;

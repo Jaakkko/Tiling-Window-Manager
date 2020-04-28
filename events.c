@@ -32,6 +32,11 @@ void wmButtonPress(XEvent event) {
 }
 
 void wmEnterNotify(XEvent event) {
+    if (wmSkipNextEnterNotify) {
+        wmSkipNextEnterNotify = 0;
+        return;
+    }
+
     XCrossingEvent* ev = &event.xcrossing;
     if (ev->mode == NotifyNormal) {
         wmWindow* window = wmWindowTowmWindow(ev->window);
