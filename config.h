@@ -57,6 +57,10 @@ static const KeyBinding keyBindings[] = {
         { MOD | ControlMask,  XK_J,        moveUpperEdgeVertically,   { .i = DOWN            } },
         { MOD | Mod1Mask,     XK_K,        moveLowerEdgeVertically,   { .i = UP              } },
         { MOD | Mod1Mask,     XK_J,        moveLowerEdgeVertically,   { .i = DOWN            } },
+        { MOD | ShiftMask,    XK_H,        moveNode,                  { .i = MOVE_LEFT       } },
+        { MOD | ShiftMask,    XK_J,        moveNode,                  { .i = MOVE_DOWN       } },
+        { MOD | ShiftMask,    XK_K,        moveNode,                  { .i = MOVE_UP         } },
+        { MOD | ShiftMask,    XK_L,        moveNode,                  { .i = MOVE_RIGHT      } },
 
         WORKSPACE(1)
         WORKSPACE(2)

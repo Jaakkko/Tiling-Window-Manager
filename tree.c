@@ -135,6 +135,29 @@ wmNode* findParent(wmNode* layout, wmNode* child) {
     return NULL;
 }
 
+int indexOf(wmNode* layout, wmNode* child, wmNode** parent, int* index) {
+    for (int i = 0; i < layout->numChildren; i++) {
+        wmNode* ptr = layout->nodes + i;
+        if (ptr == child) {
+            *parent = layout;
+            *index = i;
+            return 1;
+        }
+
+        if (indexOf(ptr, child, parent, index)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void swap(wmNode* parent, int aIndex, int bIndex) {
+    wmNode tmp = parent->nodes[aIndex];
+    parent->nodes[aIndex] = parent->nodes[bIndex];
+    parent->nodes[bIndex] = tmp;
+}
+
 void freeTree(wmNode* layout) {
     for (int i = 0; i < layout->numChildren; i++) {
         freeTree(layout->nodes + i);

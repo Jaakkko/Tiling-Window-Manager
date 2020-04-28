@@ -25,5 +25,6 @@ void moveLeftEdgeHorizontally(Arg);
 void moveRightEdgeHorizontally(Arg);
 void moveUpperEdgeVertically(Arg);
 void moveLowerEdgeVertically(Arg);
+void moveNode(Arg);
 
 #endif //WM_API_H

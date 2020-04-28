@@ -48,4 +48,6 @@ struct wmNode {
     unsigned height;
 };
 
+typedef enum { MOVE_LEFT, MOVE_UP, MOVE_RIGHT, MOVE_DOWN } wmMoveDirection;
+
 #endif //WM_TYPES_H

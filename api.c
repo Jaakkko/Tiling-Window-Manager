@@ -87,3 +87,7 @@ void moveUpperEdgeVertically(Arg a) {
 void moveLowerEdgeVertically(Arg a) {
     wmMoveLowerEdgeVertically(a.i);
 }
+
+void moveNode(Arg a) {
+    wmMoveNode(a.i);
+}

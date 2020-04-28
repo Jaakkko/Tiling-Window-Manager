@@ -89,4 +89,6 @@ void wmMoveLowerEdgeVertically(wmVerticalDirection direction);
 
 void wmConfigureWindow(wmWindow* window);
 
+void wmMoveNode(wmMoveDirection direction);
+
 #endif //WM_INSTANCE_H

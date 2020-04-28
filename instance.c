@@ -963,3 +963,48 @@ void wmConfigureWindow(wmWindow* window) {
         configureWindow(window->window, node->x, node->y, node->width, node->height);
     }
 }
+
+void wmMoveNode(wmMoveDirection direction) {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    wmNode* layout = workspace->layout;
+    if (!layout) {
+        return;
+    }
+
+    int index;
+    wmNode* parent = NULL;
+    if (!indexOf(layout, workspace->splitNode, &parent, &index)) {
+        return;
+    }
+
+    switch (direction) {
+        case MOVE_LEFT:
+            if (parent->orientation == HORIZONTAL && index >= 1) {
+                swap(parent, index, index - 1);
+                workspace->splitNode -= 1;
+                wmShowActiveWorkspace();
+            }
+            break;
+        case MOVE_UP:
+            if (parent->orientation == VERTICAL && index >= 1) {
+                swap(parent, index, index - 1);
+                workspace->splitNode -= 1;
+                wmShowActiveWorkspace();
+            }
+            break;
+        case MOVE_RIGHT:
+            if (parent->orientation == HORIZONTAL && (index + 1) < parent->numChildren) {
+                swap(parent, index, index + 1);
+                workspace->splitNode += 1;
+                wmShowActiveWorkspace();
+            }
+            break;
+        case MOVE_DOWN:
+            if (parent->orientation == VERTICAL && (index + 1) < parent->numChildren) {
+                swap(parent, index, index + 1);
+                workspace->splitNode += 1;
+                wmShowActiveWorkspace();
+            }
+            break;
+    }
+}

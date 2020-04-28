@@ -22,6 +22,10 @@ wmNode* removeNode(wmNode* layout, wmNode* node);
 wmNode* findNode(wmNode* layout, wmWindow* window);
 wmNode* findParent(wmNode* layout, wmNode* child);
 
+int indexOf(wmNode* layout, wmNode* child, wmNode** parent, int* index);
+
+void swap(wmNode* parent, int aIndex, int bIndex);
+
 void freeTree(wmNode* layout);
 
 #endif //WM_TREE_H
