@@ -8,56 +8,20 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+#include "types.h"
+
 unsigned wmActiveWorkspace;
 
-typedef struct wmDialog wmDialog;
-typedef struct wmWindow wmWindow;
-
-struct wmDialog {
-    wmWindow* window;
-    int x;
-    int y;
-    unsigned width;
-    unsigned height;
-    wmDialog* next;
-};
 wmDialog* wmDialogs;
 
-struct wmWindow {
-    wmWindow* next;
-    wmWindow* previous;
-    Window window;
-    Window frame;
-    unsigned workspaces;
-    wmDialog* dialog;
-};
 wmWindow* wmHead;
 wmWindow* wmTail;
 
 typedef enum { RIGHT, LEFT } wmHorizontalDirection;
 typedef enum { DOWN, UP } wmVerticalDirection;
 
-typedef enum { HORIZONTAL, VERTICAL, NONE } wmSplitMode;
 wmSplitMode wmSplitOrientation;
 
-typedef struct wmNode wmNode;
-struct wmNode {
-    unsigned numChildren;
-    wmNode* nodes;
-    wmWindow* window;
-    wmSplitMode orientation;
-    float weight;
-    int x;
-    int y;
-    unsigned width;
-    unsigned height;
-};
-typedef struct {
-    wmWindow* activeWindow;
-    wmNode* layout;
-    wmNode* splitNode;
-    unsigned showSplitBorder;
-} wmWorkspace;
 extern wmWorkspace wmWorkspaces[];
 
 int wmRunning;

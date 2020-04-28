@@ -8,6 +8,8 @@ add_executable(WM
         events.c
         input.c
         api.c
-        instance.c logger.c)
+        instance.c
+        logger.c
+        tree.c)
 
 target_link_libraries(WM X11 Xrender)
