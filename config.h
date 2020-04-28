@@ -23,6 +23,7 @@ static const unsigned borderColorActive = 0xfff7eb60;
 static const unsigned borderColor       = 0x801d5b82;
 static const unsigned borderWidth       = 2;
 static const unsigned gap               = 4; // 1 = 2px
+static const unsigned smartGaps         = 1;
 
 #define MOD Mod4Mask
 

@@ -616,6 +616,12 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
         return;
     }
 
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (smartGaps && workspace->layout && workspace->layout->window) {
+        Window first = workspace->layout->window->frame;
+        XSetWindowBorderWidth(wmDisplay, first, borderWidth);
+    }
+
     XSetWindowAttributes frameAttr;
     frameAttr.colormap = wmColormap;
     frameAttr.border_pixel = borderColor;
@@ -628,7 +634,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
             attributes->y,
             attributes->width,
             attributes->height,
-            borderWidth,
+            !smartGaps || workspace->layout ? borderWidth : 0,
             wmDepth,
             CopyFromParent,
             wmVisual,
@@ -680,7 +686,6 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
         wmDialogs = dialog;
     }
 
-    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     addWindowToLayout(workspace, new_wmWindow);
     setActiveWindow(workspace, new_wmWindow);
     workspace->showSplitBorder = 0;
@@ -698,7 +703,11 @@ void wmFreeWindow(wmWindow* window) {
             if (activeWindow == window) {
                 setActiveWindow(workspace, wmNextVisibleWindow(i));
             }
-            removeWindowFromLayout(&wmWorkspaces[i], window);
+            removeWindowFromLayout(workspace, window);
+            if (smartGaps && workspace->layout && workspace->layout->window) {
+                Window last = workspace->layout->window->frame;
+                XSetWindowBorderWidth(wmDisplay, last, 0);
+            }
         }
     }
 
@@ -762,22 +771,19 @@ void wmShowActiveWorkspace() {
             return;
         }
 
-        /*
-        Bool XQueryPointer(display, w, root_return, child_return, root_x_return, root_y_return,
-                     win_x_return, win_y_return, mask_return)
-        Display *display;
-        Window w;
-        Window *root_return, *child_return;
-        int *root_x_return, *root_y_return;
-        int *win_x_return, *win_y_return;
-        unsigned int *mask_return;
-         */
-        Window root_return, child_return;
-        int winx, winy;
-        unsigned mask_return;
-        XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
+        if (smartGaps && layout->window) {
+            XMoveResizeWindow(wmDisplay, layout->window->frame, 0, 0, wmScreenWidth, wmScreenHeight);
+            XResizeWindow(wmDisplay, layout->window->window, wmScreenWidth, wmScreenHeight);
+            configureWindow(layout->window->window, 0, 0, wmScreenWidth, wmScreenHeight);
+        }
+        else {
+            Window root_return, child_return;
+            int winx, winy;
+            unsigned mask_return;
+            XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
 
-        showNode(layout, gap, gap, wmScreenWidth - 2 * gap, wmScreenHeight - 2 * gap);
+            showNode(layout, gap, gap, wmScreenWidth - 2 * gap, wmScreenHeight - 2 * gap);
+        }
     }
 
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
