@@ -9,6 +9,7 @@
 #include "util.h"
 #include "config.h"
 #include "tree.h"
+#include "bar/bar.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -245,6 +246,7 @@ static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
     if (!parent) {
         free(workspace->layout);
         workspace->layout = NULL;
+        wmUpdateBar();
     }
 
     workspace->splitNode = parent;
@@ -268,6 +270,7 @@ static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
         (*layout)->width = wmScreenWidth;
         (*layout)->height = wmScreenHeight;
         workspace->splitNode = *layout;
+        wmUpdateBar();
     }
     else {
         wmNode new = newNode(window);
@@ -490,6 +493,12 @@ int wmInitialize() {
     wmCursor = XCreateFontCursor(wmDisplay, XC_arrow);
     XDefineCursor(wmDisplay, wmRoot, wmCursor);
 
+    wmCreateBar();
+    wmWindowAreaX = gap;
+    wmWindowAreaY = gap + (bottomBar ? 0 : wmBarHeight);
+    wmWindowAreaWidth = wmScreenWidth - 2 * gap;
+    wmWindowAreaHeight = wmScreenHeight - 2 * gap - wmBarHeight;
+
     initializeKeyBindings();
     queryWindows();
     wmShowActiveWorkspace();
@@ -505,6 +514,8 @@ void wmRun() {
     }
 }
 void wmFree() {
+    wmDestroyBar();
+
     XDestroyWindow(wmDisplay, wmcheckwin);
 
     freeKeyBindings();
@@ -745,6 +756,8 @@ void wmSelectWorkspace(unsigned workspaceIndex) {
     workspace->showSplitBorder = 0;
     wmUpdateBorders();
     wmShowActiveWorkspace();
+
+    wmUpdateBar();
 }
 void wmShowActiveWorkspace() {
     int mask = 1 << wmActiveWorkspace;
@@ -772,9 +785,18 @@ void wmShowActiveWorkspace() {
         }
 
         if (smartGaps && layout->window) {
-            XMoveResizeWindow(wmDisplay, layout->window->frame, 0, 0, wmScreenWidth, wmScreenHeight);
-            XResizeWindow(wmDisplay, layout->window->window, wmScreenWidth, wmScreenHeight);
-            configureWindow(layout->window->window, 0, 0, wmScreenWidth, wmScreenHeight);
+            const int height = wmScreenHeight - wmBarHeight;
+            int y;
+            if (bottomBar) {
+                y = 0;
+            }
+            else {
+                y = wmBarHeight;
+            }
+
+            XMoveResizeWindow(wmDisplay, layout->window->frame, 0, y, wmScreenWidth, height);
+            XResizeWindow(wmDisplay, layout->window->window, wmScreenWidth, height);
+            configureWindow(layout->window->window, 0, y, wmScreenWidth, height);
         }
         else {
             Window root_return, child_return;
@@ -782,7 +804,7 @@ void wmShowActiveWorkspace() {
             unsigned mask_return;
             XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
 
-            showNode(layout, gap, gap, wmScreenWidth - 2 * gap, wmScreenHeight - 2 * gap);
+            showNode(layout, wmWindowAreaX, wmWindowAreaY, wmWindowAreaWidth, wmWindowAreaHeight);
         }
     }
 

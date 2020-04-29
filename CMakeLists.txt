@@ -3,6 +3,8 @@ project(WM C)
 
 set(CMAKE_C_STANDARD 99)
 
+include_directories(/usr/include/freetype2)
+
 add_executable(WM
         main.c
         events.c
@@ -10,6 +12,7 @@ add_executable(WM
         api.c
         instance.c
         logger.c
-        tree.c)
+        tree.c
+        bar/bar.c)
 
-target_link_libraries(WM X11 Xrender)
+target_link_libraries(WM X11 Xrender Xft)

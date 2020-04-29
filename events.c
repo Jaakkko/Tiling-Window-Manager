@@ -6,6 +6,7 @@
 #include "config.h"
 #include "input.h"
 #include "util.h"
+#include "bar/bar.h"
 
 void wmKeyPress(XEvent event) {
     for (int i = 0; i < LENGTH(keyBindings); i++) {
@@ -43,6 +44,12 @@ void wmEnterNotify(XEvent event) {
         if (window) {
             wmFocusWindow(window);
         }
+    }
+}
+
+void wmExpose(XEvent event) {
+    if (event.xexpose.window == wmBarWindow) {
+        wmUpdateBar();
     }
 }
 
@@ -102,6 +109,7 @@ void (*handler[LASTEvent])(XEvent) = {
         [KeyPress] = wmKeyPress,
         [ButtonPress] = wmButtonPress,
         [EnterNotify] = wmEnterNotify,
+        [Expose] = wmExpose,
         [ConfigureRequest] = wmConfigureRequest,
         [MapRequest] = wmMapRequest,
         [DestroyNotify] = wmDestroyNotify,

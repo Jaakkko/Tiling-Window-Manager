@@ -40,6 +40,10 @@ Visual* wmVisual;
 Colormap wmColormap;
 int wmScreenWidth;
 int wmScreenHeight;
+int wmWindowAreaX;
+int wmWindowAreaY;
+int wmWindowAreaWidth;
+int wmWindowAreaHeight;
 
 Atom
     WM_PROTOCOLS,

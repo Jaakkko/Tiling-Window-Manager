@@ -18,12 +18,22 @@ static const unsigned minWidth     = 200;
 static const unsigned minHeight    = 200;
 
 //                                          AARRGGBB
-static const unsigned borderColorSplit  = 0xff50fa78;
-static const unsigned borderColorActive = 0xfff7eb60;
-static const unsigned borderColor       = 0x801d5b82;
-static const unsigned borderWidth       = 2;
-static const unsigned gap               = 4; // 1 = 2px
-static const unsigned smartGaps         = 1;
+static const unsigned borderColorSplit          = 0xff50fa78;
+static const unsigned borderColorActive         = 0xfff7eb60;
+static const unsigned borderColor               = 0x801d5b82;
+static const unsigned borderWidth               = 2;
+static const unsigned gap                       = 4; // 1 = 2px
+static const unsigned smartGaps                 = 1;
+
+// Bar
+static const char* barFont                      = "Roboto Medium:size=12:antialias=true";
+static const unsigned barPadding                = 4;
+static const unsigned barBackground             = 0xDB000000;
+static const unsigned barBackgroundSelected     = 0xFFdba716;
+static const unsigned barBackgroundUnselected   = 0xFF000000;
+static const unsigned barForegroundSelected     = 0xFF000000;
+static const unsigned barForegroundUnselected   = 0xFFBFD4E1;
+static const unsigned bottomBar                 = 1;
 
 #define MOD Mod4Mask
 
