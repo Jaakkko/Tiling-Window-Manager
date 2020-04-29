@@ -495,7 +495,11 @@ int wmInitialize() {
 
     wmCreateBar();
     wmWindowAreaX = gap;
-    wmWindowAreaY = gap + (bottomBar ? 0 : wmBarHeight);
+#ifdef bottomBar
+    wmWindowAreaY = gap;
+#else
+    wmWindowAreaY = gap + wmBarHeight;
+#endif
     wmWindowAreaWidth = wmScreenWidth - 2 * gap;
     wmWindowAreaHeight = wmScreenHeight - 2 * gap - wmBarHeight;
 
@@ -776,15 +780,14 @@ void wmShowActiveWorkspace() {
             return;
         }
 
-        if (smartGaps && layout->window) {
+#ifdef smartGaps
+        if (layout->window) {
             const int height = wmScreenHeight - wmBarHeight;
-            int y;
-            if (bottomBar) {
-                y = 0;
-            }
-            else {
-                y = wmBarHeight;
-            }
+#ifdef bottomBar
+            int y = 0;
+#else
+            int y = wmBarHeight;
+#endif
 
             XMoveResizeWindow(wmDisplay, layout->window->frame, 0, y, wmScreenWidth, height);
             XResizeWindow(wmDisplay, layout->window->window, wmScreenWidth, height);
@@ -798,6 +801,14 @@ void wmShowActiveWorkspace() {
 
             showNode(layout, wmWindowAreaX, wmWindowAreaY, wmWindowAreaWidth, wmWindowAreaHeight);
         }
+#else
+        Window root_return, child_return;
+        int winx, winy;
+        unsigned mask_return;
+        XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
+
+        showNode(layout, wmWindowAreaX, wmWindowAreaY, wmWindowAreaWidth, wmWindowAreaHeight);
+#endif
     }
 
     wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
@@ -860,17 +871,18 @@ static void updateBorders(wmNode* node, int belowSplit) {
         else {
             color = node->window == workspace->activeWindow ? borderColorActive : borderColor;
         }
+        XSetWindowBorder(wmDisplay, node->window->frame, color);
 
+#ifdef smartGaps
         unsigned width;
-        if (smartGaps && workspace->layout && workspace->layout->window) {
+        if (workspace->layout && workspace->layout->window) {
             width = 0;
         }
         else {
             width = borderWidth;
         }
-
-        XSetWindowBorder(wmDisplay, node->window->frame, color);
         XSetWindowBorderWidth(wmDisplay, node->window->frame, width);
+#endif
 
         return;
     }

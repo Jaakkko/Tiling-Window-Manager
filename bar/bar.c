@@ -67,8 +67,12 @@ void wmCreateBar() {
     attrs.override_redirect = 1;
 
     wmBarWindow = XCreateWindow(
-            wmDisplay, wmRoot,
-            0, bottomBar ? (wmScreenHeight - wmBarHeight) : 0,
+            wmDisplay, wmRoot, 0,
+#ifdef bottomBar
+            wmScreenHeight - wmBarHeight,
+#else
+            0,
+#endif
             wmScreenWidth, wmBarHeight,
             0,
             wmDepth,
