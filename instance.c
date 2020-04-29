@@ -628,10 +628,6 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     }
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    if (smartGaps && workspace->layout && workspace->layout->window) {
-        Window first = workspace->layout->window->frame;
-        XSetWindowBorderWidth(wmDisplay, first, borderWidth);
-    }
 
     XSetWindowAttributes frameAttr;
     frameAttr.colormap = wmColormap;
@@ -645,7 +641,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
             attributes->y,
             attributes->width,
             attributes->height,
-            !smartGaps || workspace->layout ? borderWidth : 0,
+            borderWidth,
             wmDepth,
             CopyFromParent,
             wmVisual,
@@ -715,10 +711,6 @@ void wmFreeWindow(wmWindow* window) {
                 setActiveWindow(workspace, wmNextVisibleWindow(i));
             }
             removeWindowFromLayout(workspace, window);
-            if (smartGaps && workspace->layout && workspace->layout->window) {
-                Window last = workspace->layout->window->frame;
-                XSetWindowBorderWidth(wmDisplay, last, 0);
-            }
         }
     }
 
@@ -869,7 +861,17 @@ static void updateBorders(wmNode* node, int belowSplit) {
             color = node->window == workspace->activeWindow ? borderColorActive : borderColor;
         }
 
+        unsigned width;
+        if (smartGaps && workspace->layout && workspace->layout->window) {
+            width = 0;
+        }
+        else {
+            width = borderWidth;
+        }
+
         XSetWindowBorder(wmDisplay, node->window->frame, color);
+        XSetWindowBorderWidth(wmDisplay, node->window->frame, width);
+
         return;
     }
 
