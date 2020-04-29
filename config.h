@@ -13,7 +13,7 @@
 
 #define WINDOW_MANAGER_NAME "X11 Window Manager"
 
-static const float    resizeChange = 0.15;
+static const float    resizeChange = 0.1;
 static const unsigned minWidth     = 200;
 static const unsigned minHeight    = 200;
 
@@ -35,6 +35,9 @@ static const unsigned smartGaps         = 1;
 
 static const char* startupScriptBath = "~/.config/wm/startup.sh";
 
+static const char* rofi[] = { "rofi", "-show", "run", NULL };
+static const char* alacritty[] = { "alacritty", NULL };
+
 static const KeyBinding keyBindings[] = {
         // Modifier                    Key          Function                Argument
         { MOD | ControlMask,  XK_Q,        quit,                      { .i = 130             } },
@@ -42,7 +45,8 @@ static const KeyBinding keyBindings[] = {
         { MOD,                XK_Q,        closeActiveWindow,         {                      } },
         { MOD,                XK_J,        focus,                     { .i = +1              } },
         { MOD,                XK_K,        focus,                     { .i = -1              } },
-        { MOD,                XK_Return,   openApplication,           { .v = "alacritty"     } },
+        { MOD,                XK_D,        openApplication,           { .v = rofi            } },
+        { MOD,                XK_Return,   openApplication,           { .v = alacritty       } },
         { MOD,                XK_Z,        clearSplitHints,           {                      } },
         { MOD,                XK_X,        raiseSplit,                { .i = NONE            } },
         { MOD,                XK_C,        raiseSplit,                { .i = HORIZONTAL      } },

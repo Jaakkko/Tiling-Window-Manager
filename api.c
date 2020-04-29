@@ -34,8 +34,7 @@ void focus(Arg a) {
 void openApplication(Arg a) {
     if (fork() == 0) {
         setsid();
-        char* cmd[] = { a.v, NULL };
-        execvp(cmd[0], cmd);
+        execvp(((const char**)a.v)[0], (char**)a.v);
         exit(EXIT_SUCCESS);
     }
 }
