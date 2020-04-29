@@ -789,6 +789,11 @@ void wmShowActiveWorkspace() {
             int y = wmBarHeight;
 #endif
 
+            layout->x = 0;
+            layout->y = y;
+            layout->width = wmScreenWidth;
+            layout->height = height;
+
             XMoveResizeWindow(wmDisplay, layout->window->frame, 0, y, wmScreenWidth, height);
             XResizeWindow(wmDisplay, layout->window->window, wmScreenWidth, height);
             configureWindow(layout->window->window, 0, y, wmScreenWidth, height);
