@@ -26,6 +26,11 @@ int indexOf(wmNode* layout, wmNode* child, wmNode** parent, int* index);
 
 void swap(wmNode* parent, int aIndex, int bIndex);
 
+wmNode* raiseLeft(wmNode* layout, wmNode* parent, int index);
+wmNode* raiseRight(wmNode* layout, wmNode* parent, int index);
+wmNode* raiseUp(wmNode* layout, wmNode* parent, int index);
+wmNode* raiseDown(wmNode* layout, wmNode* parent, int index);
+
 void freeTree(wmNode* layout);
 
 #endif //WM_TREE_H

@@ -1025,29 +1025,41 @@ void wmMoveNode(wmMoveDirection direction) {
             if (parent->orientation == HORIZONTAL && index >= 1) {
                 swap(parent, index, index - 1);
                 workspace->splitNode -= 1;
-                wmShowActiveWorkspace();
             }
+            else {
+                workspace->splitNode = raiseLeft(workspace->layout, parent, index);
+            }
+            wmShowActiveWorkspace();
             break;
         case MOVE_UP:
             if (parent->orientation == VERTICAL && index >= 1) {
                 swap(parent, index, index - 1);
                 workspace->splitNode -= 1;
-                wmShowActiveWorkspace();
             }
+            else {
+                workspace->splitNode = raiseUp(workspace->layout, parent, index);
+            }
+            wmShowActiveWorkspace();
             break;
         case MOVE_RIGHT:
             if (parent->orientation == HORIZONTAL && (index + 1) < parent->numChildren) {
                 swap(parent, index, index + 1);
                 workspace->splitNode += 1;
-                wmShowActiveWorkspace();
             }
+            else {
+                workspace->splitNode = raiseRight(workspace->layout, parent, index);
+            }
+            wmShowActiveWorkspace();
             break;
         case MOVE_DOWN:
             if (parent->orientation == VERTICAL && (index + 1) < parent->numChildren) {
                 swap(parent, index, index + 1);
                 workspace->splitNode += 1;
-                wmShowActiveWorkspace();
             }
+            else {
+                workspace->splitNode = raiseDown(workspace->layout, parent, index);
+            }
+            wmShowActiveWorkspace();
             break;
     }
 }

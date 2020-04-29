@@ -160,10 +160,107 @@ int indexOf(wmNode* layout, wmNode* child, wmNode** parent, int* index) {
     return 0;
 }
 
-void swap(wmNode* parent, int aIndex, int bIndex) {
+inline void swap(wmNode* parent, int aIndex, int bIndex) {
     wmNode tmp = parent->nodes[aIndex];
     parent->nodes[aIndex] = parent->nodes[bIndex];
     parent->nodes[bIndex] = tmp;
+}
+
+static wmNode* raise(wmNode* layout, wmNode* parent, int index, int indexRising, wmSplitMode orientation) {
+    parent->numChildren--;
+
+    float weight;
+    if (layout == parent) {
+        if (parent->numChildren == 1) {
+            parent->numChildren = 2;
+            parent->orientation = orientation;
+            if (index != indexRising) {
+                swap(parent, 0, 1);
+            }
+            return &parent->nodes[indexRising];
+        }
+
+        wmNode a = parent->nodes[index];
+
+        wmNode* dst = parent->nodes + index;
+        memmove(dst, dst + 1, sizeof(wmNode) * (parent->numChildren - index));
+        parent->nodes = realloc(parent->nodes, sizeof(wmNode) * parent->numChildren);
+        wmNode b = *parent;
+        weight = 1.0f / b.numChildren;
+        for (int i = 0; i < b.numChildren; i++) {
+            b.nodes[i].weight = weight;
+        }
+
+        parent->nodes = calloc(2, sizeof(wmNode));
+        parent->nodes[0] = a;
+        parent->nodes[0].weight = 0.5f;
+        parent->nodes[1] = b;
+        parent->nodes[1].weight = 0.5f;
+        parent->orientation = orientation;
+        if (indexRising) {
+            swap(parent, 0, 1);
+        }
+        return &parent->nodes[indexRising];
+    }
+
+    wmNode new[2];
+    int n;
+
+    if (parent->numChildren == 1) {
+        n = 2;
+        if (index) {
+            swap(parent, 0, 1);
+        }
+        memcpy(new, parent->nodes, sizeof(wmNode) * 2);
+        free(parent->nodes);
+        parent->numChildren = 0;
+    }
+    else {
+        n = 1;
+        memcpy(new, parent->nodes + index, sizeof(wmNode));
+
+        // Remove moving
+        wmNode* dst = parent->nodes + index;
+        memmove(dst, dst + 1, sizeof(wmNode) * (parent->numChildren - index));
+        parent->nodes = realloc(parent->nodes, sizeof(wmNode) * parent->numChildren);
+        weight = 1.0f / parent->numChildren;
+        for (int i = 0; i < parent->numChildren; i++) {
+            parent->nodes[i].weight = weight;
+        }
+    }
+
+    // Find destination
+    wmNode* destParent;
+    int destIndex;
+    indexOf(layout, parent, &destParent, &destIndex);
+
+    // Expand array + insert
+    destParent->numChildren++;
+    destParent->nodes = realloc(destParent->nodes, sizeof(wmNode) * destParent->numChildren);
+    wmNode* src = destParent->nodes + destIndex;
+    memmove(src + 1, src, sizeof(wmNode) * (destParent->numChildren - 1 - destIndex));
+    memcpy(src, new, sizeof(wmNode) * n);
+    if (indexRising) {
+        swap(destParent, destIndex, destIndex + 1);
+    }
+    weight = 1.0f / destParent->numChildren;
+    for (int i = 0; i < destParent->numChildren; i++) {
+        destParent->nodes[i].weight = weight;
+    }
+
+    return indexRising ? src + 1 : src;
+}
+wmNode* raiseLeft(wmNode* layout, wmNode* parent, int index) {
+    return raise(layout, parent, index, 0, HORIZONTAL);
+}
+wmNode* raiseRight(wmNode* layout, wmNode* parent, int index) {
+    return raise(layout, parent, index, 1, HORIZONTAL);
+}
+wmNode* raiseUp(wmNode* layout, wmNode* parent, int index) {
+    return raise(layout, parent, index, 0, VERTICAL);
+}
+wmNode* raiseDown(wmNode* layout, wmNode* parent, int index) {
+    return raise(layout, parent, index, 1, VERTICAL);
 }
 
 void freeTree(wmNode* layout) {
