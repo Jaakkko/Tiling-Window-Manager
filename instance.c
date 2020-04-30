@@ -436,6 +436,10 @@ static void queryWindows() {
     XUngrabServer(wmDisplay);
 }
 int wmInitialize() {
+    if (!XInitThreads()) {
+        return 0;
+    }
+
     wmDisplay = XOpenDisplay(NULL);
     if (!wmDisplay) {
         return 0;

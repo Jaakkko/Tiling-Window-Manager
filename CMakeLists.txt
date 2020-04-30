@@ -13,6 +13,8 @@ add_executable(WM
         instance.c
         logger.c
         tree.c
-        bar/bar.c)
+        bar/bar.c
+        bar/block.c
+)
 
-target_link_libraries(WM X11 Xrender Xft)
+target_link_libraries(WM X11 Xrender Xft pthread)

@@ -7,6 +7,7 @@
 #include <X11/keysym.h>
 #include <X11/X.h>
 
+#include "bar/block.h"
 #include "instance.h"
 #include "input.h"
 #include "api.h"
@@ -26,7 +27,7 @@ static const unsigned gap                       = 4; // 1 = 2px
 #define smartGaps
 
 // Bar
-static const char* barFont                      = "Roboto Medium:size=12:antialias=true";
+static const char* barFont                      = "Roboto:style=Regular:size=11:antialias=true";
 static const unsigned barPadding                = 4;
 static const unsigned barBackground             = 0xDB000000;
 static const unsigned barBackgroundSelected     = 0xFFdba716;
@@ -34,6 +35,21 @@ static const unsigned barBackgroundUnselected   = 0xFF000000;
 static const unsigned barForegroundSelected     = 0xFF000000;
 static const unsigned barForegroundUnselected   = 0xFFBFD4E1;
 #define bottomBar
+
+// Bar blocks
+#define blockBackround
+static const unsigned blockBackgroundColor      = 0xFF14213D;
+static const unsigned blockForegroundColor      = 0xFFBFD4E1;
+static const unsigned blockPadding              = 8;
+static const unsigned blockMargin               = 0;
+static wmBlock blocks[] = {
+        // func          longest possible
+        { datetime,     "10.10.2020 14.14" },
+        { disk,         "345 G"            },
+        { temperature,  "99,5 °C"          },
+        { cpu,          "99,99 %"          },
+        { ram,          "34,4 G"           },
+};
 
 #define MOD Mod4Mask
 
