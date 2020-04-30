@@ -40,6 +40,92 @@ int wmExitCode = 0;
 static Window wmcheckwin;
 static wmWindow* fullscreen = NULL;
 
+static void addAtom(Window window, Atom property, Atom value, unsigned maxAtomsCount) {
+    Atom type_return;
+    int format_return;
+    unsigned long nitems;
+    unsigned long bytes_after_return;
+    unsigned long* prop_return;
+    Status status = XGetWindowProperty(
+            wmDisplay,
+            window,
+            _NET_WM_STATE,
+            0,
+            maxAtomsCount,
+            False,
+            AnyPropertyType,
+            &type_return,
+            &format_return,
+            &nitems,
+            &bytes_after_return,
+            (unsigned char**)&prop_return
+    );
+    if (status != Success) {
+        return;
+    }
+
+    int exist = 0;
+    int i;
+    for (i = 0; i < nitems; i++) {
+        if (prop_return[i] == value) {
+            exist = 1;
+            break;
+        }
+    }
+    XFree(prop_return);
+
+    if (!exist) {
+        XChangeProperty(wmDisplay, window, property, XA_ATOM, 32, PropModeAppend, (unsigned char*)&value, 1);
+    }
+}
+static void removeAtom(Window window, Atom property, Atom value, unsigned maxAtomsCount, Atom* newAtoms) {
+    Atom type_return;
+    int format_return;
+    unsigned long nitems;
+    unsigned long bytes_after_return;
+    unsigned long* prop_return;
+    Status status = XGetWindowProperty(
+            wmDisplay,
+            window,
+            _NET_WM_STATE,
+            0,
+            maxAtomsCount,
+            False,
+            AnyPropertyType,
+            &type_return,
+            &format_return,
+            &nitems,
+            &bytes_after_return,
+            (unsigned char**)&prop_return
+    );
+    if (status != Success) {
+        return;
+    }
+
+    int keepCount = 0;
+    int i;
+    for (i = 0; i < nitems; i++) {
+        if (prop_return[i] != value) {
+            newAtoms[keepCount] = prop_return[i];
+            keepCount++;
+        }
+    }
+    XFree(prop_return);
+
+    if (nitems != keepCount) {
+        XChangeProperty(
+                wmDisplay,
+                window,
+                property,
+                XA_ATOM,
+                32,
+                PropModeReplace,
+                (unsigned char*)newAtoms,
+                keepCount
+        );
+    }
+}
+
 static int estimateNewWindowSize(wmNode* node, wmNode* target, int *x, int *y, unsigned *width, unsigned *height) {
     if (node == target) {
         wmSplitMode orientation;
@@ -386,6 +472,7 @@ static void initAtoms() {
     _NET_FRAME_EXTENTS              = XInternAtom(wmDisplay, "_NET_FRAME_EXTENTS", False);
     _NET_WM_NAME                    = XInternAtom(wmDisplay, "_NET_WM_NAME", False);
     _NET_WM_STATE                   = XInternAtom(wmDisplay, "_NET_WM_STATE", False);
+    _NET_WM_STATE_HIDDEN            = XInternAtom(wmDisplay, "_NET_WM_STATE_HIDDEN", False);
     _NET_WM_STATE_FULLSCREEN        = XInternAtom(wmDisplay, "_NET_WM_STATE_FULLSCREEN", False);
 
     Atom supported[] = {
@@ -397,6 +484,7 @@ static void initAtoms() {
             _NET_FRAME_EXTENTS,
             _NET_WM_NAME,
             _NET_WM_STATE,
+            _NET_WM_STATE_HIDDEN,
             _NET_WM_STATE_FULLSCREEN,
     };
 
@@ -768,10 +856,15 @@ void wmShowActiveWorkspace() {
         if (window->workspaces & mask) {
             XMapWindow(wmDisplay, window->frame);
             data[0] = NormalState;
+
+            Atom newAtoms[WM_STATE_SUPPORTED_COUNT - 1];
+            removeAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, WM_STATE_SUPPORTED_COUNT, newAtoms);
         }
         else {
             XUnmapWindow(wmDisplay, window->frame);
             data[0] = WithdrawnState;
+
+            addAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, WM_STATE_SUPPORTED_COUNT);
         }
 
         XChangeProperty(wmDisplay, window->window, WM_STATE, WM_STATE, 32, PropModeReplace, (unsigned char*)data, 2);

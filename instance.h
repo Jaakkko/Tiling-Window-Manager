@@ -45,6 +45,8 @@ int wmWindowAreaY;
 int wmWindowAreaWidth;
 int wmWindowAreaHeight;
 
+#define WM_STATE_SUPPORTED_COUNT 2
+
 Atom
     WM_PROTOCOLS,
     WM_DELETE_WINDOW,
@@ -58,6 +60,7 @@ Atom
     _NET_FRAME_EXTENTS,
     _NET_WM_NAME,
     _NET_WM_STATE,
+    _NET_WM_STATE_HIDDEN,
     _NET_WM_STATE_FULLSCREEN;
 
 typedef struct {
