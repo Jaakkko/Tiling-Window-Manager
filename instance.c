@@ -391,8 +391,10 @@ static void initAtoms() {
     Atom supported[] = {
             _NET_SUPPORTED,
             _NET_CLIENT_LIST,
-            _NET_SUPPORTING_WM_CHECK,
             _NET_ACTIVE_WINDOW,
+            _NET_SUPPORTING_WM_CHECK,
+            _NET_REQUEST_FRAME_EXTENTS,
+            _NET_FRAME_EXTENTS,
             _NET_WM_NAME,
             _NET_WM_STATE,
             _NET_WM_STATE_FULLSCREEN,
