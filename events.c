@@ -39,7 +39,7 @@ void wmEnterNotify(XEvent event) {
     }
 
     XCrossingEvent* ev = &event.xcrossing;
-    if (ev->mode == NotifyNormal) {
+    if (ev->mode == NotifyNormal && ev->detail != NotifyInferior) {
         wmWindow* window = wmWindowTowmWindow(ev->window);
         if (window) {
             wmFocusWindow(window);

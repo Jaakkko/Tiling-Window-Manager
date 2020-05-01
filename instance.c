@@ -703,14 +703,18 @@ void wmRequestCloseWindow(wmWindow* window) {
         for (int i = 0; i < numSupportedProtocols; i++) {
             if (supportedProtocols[i] == WM_DELETE_WINDOW) {
                 XEvent message;
+                memset(&message, 0, sizeof(XEvent));
                 message.xclient.type = ClientMessage;
                 message.xclient.message_type = WM_PROTOCOLS;
                 message.xclient.window = window->window;
                 message.xclient.format = 32;
                 message.xclient.data.l[0] = WM_DELETE_WINDOW;
                 XSendEvent(wmDisplay, window->window, False, 0, &message);
+                break;
             }
         }
+
+        XFree(supportedProtocols);
     }
     else {
         XKillClient(wmDisplay, window->window);
