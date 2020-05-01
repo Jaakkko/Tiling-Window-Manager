@@ -26,7 +26,7 @@ unsigned datetime(char* buffer, unsigned bufferLength) {
     timer = time(NULL);
     tm_info = localtime(&timer);
 
-    return strftime(buffer, bufferLength, "%d.%m.%Y %H.%M", tm_info);
+    return strftime(buffer, bufferLength, "%-d.%-m.%Y %H.%M", tm_info);
 }
 
 unsigned disk(char* buffer, unsigned bufferLength) {
