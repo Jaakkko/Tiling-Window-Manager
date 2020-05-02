@@ -476,6 +476,7 @@ static void initAtoms() {
     _NET_SUPPORTED                  = XInternAtom(wmDisplay, "_NET_SUPPORTED", False);
     _NET_CLIENT_LIST                = XInternAtom(wmDisplay, "_NET_CLIENT_LIST", False);
     _NET_NUMBER_OF_DESKTOPS         = XInternAtom(wmDisplay, "_NET_NUMBER_OF_DESKTOPS", False);
+    _NET_DESKTOP_GEOMETRY           = XInternAtom(wmDisplay, "_NET_DESKTOP_GEOMETRY", False);
     _NET_ACTIVE_WINDOW              = XInternAtom(wmDisplay, "_NET_ACTIVE_WINDOW", False);
     _NET_SUPPORTING_WM_CHECK        = XInternAtom(wmDisplay, "_NET_SUPPORTING_WM_CHECK", False);
     _NET_REQUEST_FRAME_EXTENTS      = XInternAtom(wmDisplay, "_NET_REQUEST_FRAME_EXTENTS", False);
@@ -489,6 +490,7 @@ static void initAtoms() {
             _NET_SUPPORTED,
             _NET_CLIENT_LIST,
             _NET_NUMBER_OF_DESKTOPS,
+            _NET_DESKTOP_GEOMETRY,
             _NET_ACTIVE_WINDOW,
             _NET_SUPPORTING_WM_CHECK,
             _NET_REQUEST_FRAME_EXTENTS,
@@ -508,6 +510,9 @@ static void initAtoms() {
     XChangeProperty(wmDisplay, wmcheckwin, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
     XChangeProperty(wmDisplay, wmcheckwin, _NET_WM_NAME, utf8string, 8, PropModeReplace, (unsigned char *) wmname, LENGTH(wmname));
     XChangeProperty(wmDisplay, wmRoot, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
+
+    long geometry[] = { wmScreenWidth, wmScreenHeight };
+    XChangeProperty(wmDisplay, wmRoot, _NET_DESKTOP_GEOMETRY, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)geometry, 2);
 
     updateNetNumberOfDesktops();
 }
