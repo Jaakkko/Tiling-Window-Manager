@@ -264,12 +264,15 @@ static void netActiveWindow(XClientMessageEvent* event) {
         wmUpdateBorders();
     }
 }
-
+static void netCurrentDesktop(XClientMessageEvent* event) {
+    wmSelectWorkspace(event->data.l[0]);
+}
 
 ClientMessageHandler clientMessageHandler[] = {
         { &_NET_WM_STATE,               stateHandler        },
         { &_NET_REQUEST_FRAME_EXTENTS,  requestFrameExtents },
         { &_NET_ACTIVE_WINDOW,          netActiveWindow     },
+        { &_NET_CURRENT_DESKTOP,        netCurrentDesktop   },
 };
 const unsigned clientMessageHandlersCount = LENGTH(clientMessageHandler);
 
@@ -473,11 +476,14 @@ static void initAtoms() {
     WM_DELETE_WINDOW                = XInternAtom(wmDisplay, "WM_DELETE_WINDOW", False);
     WM_STATE                        = XInternAtom(wmDisplay, "WM_STATE", False);
     WM_TAKE_FOCUS                   = XInternAtom(wmDisplay, "WM_TAKE_FOCUS", False);
+    UTF8_STRING                     = XInternAtom(wmDisplay, "UTF8_STRING", False);
     _NET_SUPPORTED                  = XInternAtom(wmDisplay, "_NET_SUPPORTED", False);
     _NET_CLIENT_LIST                = XInternAtom(wmDisplay, "_NET_CLIENT_LIST", False);
     _NET_NUMBER_OF_DESKTOPS         = XInternAtom(wmDisplay, "_NET_NUMBER_OF_DESKTOPS", False);
     _NET_DESKTOP_GEOMETRY           = XInternAtom(wmDisplay, "_NET_DESKTOP_GEOMETRY", False);
     _NET_DESKTOP_VIEWPORT           = XInternAtom(wmDisplay, "_NET_DESKTOP_VIEWPORT", False);
+    _NET_CURRENT_DESKTOP            = XInternAtom(wmDisplay, "_NET_CURRENT_DESKTOP", False);
+    _NET_DESKTOP_NAMES              = XInternAtom(wmDisplay, "_NET_DESKTOP_NAMES", False);
     _NET_ACTIVE_WINDOW              = XInternAtom(wmDisplay, "_NET_ACTIVE_WINDOW", False);
     _NET_SUPPORTING_WM_CHECK        = XInternAtom(wmDisplay, "_NET_SUPPORTING_WM_CHECK", False);
     _NET_REQUEST_FRAME_EXTENTS      = XInternAtom(wmDisplay, "_NET_REQUEST_FRAME_EXTENTS", False);
@@ -493,6 +499,8 @@ static void initAtoms() {
             _NET_NUMBER_OF_DESKTOPS,
             _NET_DESKTOP_GEOMETRY,
             _NET_DESKTOP_VIEWPORT,
+            _NET_CURRENT_DESKTOP,
+            _NET_DESKTOP_NAMES,
             _NET_ACTIVE_WINDOW,
             _NET_SUPPORTING_WM_CHECK,
             _NET_REQUEST_FRAME_EXTENTS,
@@ -507,10 +515,9 @@ static void initAtoms() {
     XDeleteProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST);
 
     const char wmname[] = WINDOW_MANAGER_NAME;
-    Atom utf8string = XInternAtom(wmDisplay, "UTF8_STRING", False);
     wmcheckwin = XCreateSimpleWindow(wmDisplay, wmRoot, 0, 0, 1, 1, 0, 0, 0);
     XChangeProperty(wmDisplay, wmcheckwin, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
-    XChangeProperty(wmDisplay, wmcheckwin, _NET_WM_NAME, utf8string, 8, PropModeReplace, (unsigned char *) wmname, LENGTH(wmname));
+    XChangeProperty(wmDisplay, wmcheckwin, _NET_WM_NAME, UTF8_STRING, 8, PropModeReplace, (unsigned char *) wmname, LENGTH(wmname));
     XChangeProperty(wmDisplay, wmRoot, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
 
     long geometry[] = { wmScreenWidth, wmScreenHeight };
@@ -518,6 +525,12 @@ static void initAtoms() {
 
     long viewport[] = { 0, 0 };
     XChangeProperty(wmDisplay, wmRoot, _NET_DESKTOP_VIEWPORT, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)viewport, 2);
+
+    long currentDesktop = wmActiveWorkspace;
+    XChangeProperty(wmDisplay, wmRoot, _NET_CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)&currentDesktop, 1);
+
+    const char* desktopNames = "1\0""2\0""3\0""4\0""5\0""6\0""7\0""8\0""9\0";
+    XChangeProperty(wmDisplay, wmRoot, _NET_DESKTOP_NAMES, UTF8_STRING, 8, PropModeReplace, (unsigned char*)desktopNames, 18);
 
     updateNetNumberOfDesktops();
 }
@@ -870,6 +883,10 @@ wmWindow* wmWindowTowmWindow(Window window) {
 
 void wmSelectWorkspace(unsigned workspaceIndex) {
     wmActiveWorkspace = workspaceIndex;
+
+    long currentDesktop = wmActiveWorkspace;
+    XChangeProperty(wmDisplay, wmRoot, _NET_CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)&currentDesktop, 1);
+
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     updateNetNumberOfDesktops();
 
