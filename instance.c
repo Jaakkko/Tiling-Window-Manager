@@ -273,6 +273,15 @@ ClientMessageHandler clientMessageHandler[] = {
 };
 const unsigned clientMessageHandlersCount = LENGTH(clientMessageHandler);
 
+static void updateNetNumberOfDesktops() {
+    long count = 0;
+    for  (int i = 0; i < WORKSPACE_COUNT; i++) {
+        count += wmActiveWorkspace == i || wmWorkspaces[i].activeWindow != NULL;
+    }
+
+    XChangeProperty(wmDisplay, wmRoot, _NET_NUMBER_OF_DESKTOPS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)&count, 1);
+}
+
 static void attachWindow(wmWindow* window) {
     window->next = wmHead;
 
@@ -466,6 +475,7 @@ static void initAtoms() {
     WM_TAKE_FOCUS                   = XInternAtom(wmDisplay, "WM_TAKE_FOCUS", False);
     _NET_SUPPORTED                  = XInternAtom(wmDisplay, "_NET_SUPPORTED", False);
     _NET_CLIENT_LIST                = XInternAtom(wmDisplay, "_NET_CLIENT_LIST", False);
+    _NET_NUMBER_OF_DESKTOPS         = XInternAtom(wmDisplay, "_NET_NUMBER_OF_DESKTOPS", False);
     _NET_ACTIVE_WINDOW              = XInternAtom(wmDisplay, "_NET_ACTIVE_WINDOW", False);
     _NET_SUPPORTING_WM_CHECK        = XInternAtom(wmDisplay, "_NET_SUPPORTING_WM_CHECK", False);
     _NET_REQUEST_FRAME_EXTENTS      = XInternAtom(wmDisplay, "_NET_REQUEST_FRAME_EXTENTS", False);
@@ -478,6 +488,7 @@ static void initAtoms() {
     Atom supported[] = {
             _NET_SUPPORTED,
             _NET_CLIENT_LIST,
+            _NET_NUMBER_OF_DESKTOPS,
             _NET_ACTIVE_WINDOW,
             _NET_SUPPORTING_WM_CHECK,
             _NET_REQUEST_FRAME_EXTENTS,
@@ -497,6 +508,8 @@ static void initAtoms() {
     XChangeProperty(wmDisplay, wmcheckwin, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
     XChangeProperty(wmDisplay, wmcheckwin, _NET_WM_NAME, utf8string, 8, PropModeReplace, (unsigned char *) wmname, LENGTH(wmname));
     XChangeProperty(wmDisplay, wmRoot, _NET_SUPPORTING_WM_CHECK, XA_WINDOW, 32, PropModeReplace, (unsigned char *) &wmcheckwin, 1);
+
+    updateNetNumberOfDesktops();
 }
 static void freeWorkspaces() {
     for (int i = 0; i < LENGTH(wmWorkspaces); i++) {
@@ -654,6 +667,7 @@ void wmMoveActiveWindow(unsigned workspace) {
             destination->activeWindow = source->activeWindow;
             destination->activeWindow->workspaces = 1U << workspace;
             setActiveWindow(source, wmNextVisibleWindow(wmActiveWorkspace));
+            updateNetNumberOfDesktops();
             wmUpdateBorders();
             wmShowActiveWorkspace();
         }
@@ -678,6 +692,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
             removeWindowFromLayout(workspace, activeWindow);
             setActiveWindow(workspace, wmNextVisibleWindow(workspaceIndex));
         }
+        updateNetNumberOfDesktops();
 
         wmWorkspaces[wmActiveWorkspace].showSplitBorder = 0;
         wmUpdateBorders();
@@ -797,6 +812,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
 
     addWindowToLayout(workspace, new_wmWindow);
     setActiveWindow(workspace, new_wmWindow);
+    updateNetNumberOfDesktops();
     workspace->showSplitBorder = 0;
     wmUpdateBorders();
 }
@@ -845,6 +861,7 @@ wmWindow* wmWindowTowmWindow(Window window) {
 void wmSelectWorkspace(unsigned workspaceIndex) {
     wmActiveWorkspace = workspaceIndex;
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    updateNetNumberOfDesktops();
 
     setActiveWindow(workspace, workspace->activeWindow);
     workspace->showSplitBorder = 0;
