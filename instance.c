@@ -866,7 +866,7 @@ void wmShowActiveWorkspace() {
         }
         else {
             XUnmapWindow(wmDisplay, window->frame);
-            data[0] = WithdrawnState;
+            data[0] = IconicState;
 
             addAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, WM_STATE_SUPPORTED_COUNT);
         }
