@@ -843,6 +843,10 @@ void wmFreeWindow(wmWindow* window) {
     XUnmapWindow(wmDisplay, window->frame);
     XDestroyWindow(wmDisplay, window->frame);
 
+    if (fullscreen == window) {
+        fullscreen = NULL;
+    }
+
     for (int i = 0; i < WORKSPACE_COUNT; i++) {
         unsigned mask = 1 << i;
         if (window->workspaces & mask) {
