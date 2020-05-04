@@ -47,6 +47,55 @@ static void updateMouseCoords() {
     XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
 }
 
+static int getAction(Window window, long* data) {
+    int add;
+    switch (data[0]) {
+        case _NET_WM_STATE_REMOVE:
+            add = 0;
+            break;
+        case _NET_WM_STATE_ADD:
+            add = 1;
+            break;
+        case _NET_WM_STATE_TOGGLE: {
+            Atom type_return;
+            int format_return;
+            unsigned long nitems;
+            unsigned long bytes_after_return;
+            unsigned long* prop_return;
+            Status status = XGetWindowProperty(
+                    wmDisplay,
+                    window,
+                    _NET_WM_STATE,
+                    0,
+                    _NET_WM_STATE_SUPPORTED_COUNT,
+                    False,
+                    AnyPropertyType,
+                    &type_return,
+                    &format_return,
+                    &nitems,
+                    &bytes_after_return,
+                    (unsigned char**)&prop_return
+            );
+
+            if (status != Success) {
+                add = 1;
+                break;
+            }
+
+            int found = 0;
+            for (int j = 0; j < nitems; j++) {
+                if (prop_return[j] == _NET_WM_STATE_STICKY) {
+                    found = 1;
+                    break;
+                }
+            }
+            add = !found;
+            XFree(prop_return);
+            break;
+        }
+    }
+    return add;
+}
 static int containsAtomValue(Window window, Atom property, Atom value, unsigned maxAtomsCount) {
     Atom type_return;
     int format_return;
@@ -490,14 +539,15 @@ static void stateHandler(XClientMessageEvent* event) {
             if (!window) {
                 return;
             }
-            if (!fullscreen) {
+            int enable = getAction(window->window, event->data.l);
+            if (enable && !fullscreen) {
                 XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, (unsigned char*)&_NET_WM_STATE_FULLSCREEN, 1);
                 XUnmapWindow(wmDisplay, window->frame);
                 XReparentWindow(wmDisplay, window->window, wmRoot, 0, 0);
                 fullscreen = window;
                 wmShowActiveWorkspace();
             }
-            else {
+            else if (fullscreen) {
                 XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, NULL, 0);
                 XWindowAttributes attributes;
                 if (XGetWindowAttributes(wmDisplay, window->window, &attributes)) {
@@ -513,53 +563,7 @@ static void stateHandler(XClientMessageEvent* event) {
                 return;
             }
 
-            int enable;
-            switch (event->data.l[0]) {
-                case _NET_WM_STATE_REMOVE:
-                    enable = 0;
-                    break;
-                case _NET_WM_STATE_ADD:
-                    enable = 1;
-                    break;
-                case _NET_WM_STATE_TOGGLE: {
-                    Atom type_return;
-                    int format_return;
-                    unsigned long nitems;
-                    unsigned long bytes_after_return;
-                    unsigned long* prop_return;
-                    Status status = XGetWindowProperty(
-                            wmDisplay,
-                            window->window,
-                            _NET_WM_STATE,
-                            0,
-                            _NET_WM_STATE_SUPPORTED_COUNT,
-                            False,
-                            AnyPropertyType,
-                            &type_return,
-                            &format_return,
-                            &nitems,
-                            &bytes_after_return,
-                            (unsigned char**)&prop_return
-                    );
-
-                    if (status != Success) {
-                        enable = 1;
-                        break;
-                    }
-
-                    int found = 0;
-                    for (int j = 0; j < nitems; j++) {
-                        if (prop_return[i] == _NET_WM_STATE_STICKY) {
-                            found = 1;
-                            break;
-                        }
-                    }
-                    enable = !found;
-                    XFree(prop_return);
-                    break;
-                }
-            }
-
+            int enable = getAction(window->window, event->data.l);
             if (enable) {
                 if (!window->floating) {
                     for (int j = 0; j < WORKSPACE_COUNT; j++) {
