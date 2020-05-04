@@ -12,6 +12,7 @@
 #include "bar/bar.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <X11/cursorfont.h>
@@ -307,13 +308,18 @@ static void setActiveWindow(wmWorkspace* workspace, wmWindow* window) {
     workspace->activeWindow = window;
 }
 
-static void updateNetNumberOfDesktops() {
+static void updateWorkspaceAtoms() {
+    char desktopNames[2 * WORKSPACE_COUNT];
     long count = 0;
     for  (int i = 0; i < WORKSPACE_COUNT; i++) {
-        count += wmActiveWorkspace == i || wmWorkspaces[i].activeWindow != NULL;
+        if (wmActiveWorkspace == i || wmWorkspaces[i].activeWindow != NULL) {
+            sprintf(desktopNames + 2 * count, "%i", i + 1);
+            count++;
+        }
     }
 
     XChangeProperty(wmDisplay, wmRoot, _NET_NUMBER_OF_DESKTOPS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)&count, 1);
+    XChangeProperty(wmDisplay, wmRoot, _NET_DESKTOP_NAMES, UTF8_STRING, 8, PropModeReplace, (unsigned char*)desktopNames, 2 * count);
 }
 
 static void attachWindow(wmWindow* window) {
@@ -567,12 +573,8 @@ static void stateHandler(XClientMessageEvent* event) {
             if (enable) {
                 if (!window->floating) {
                     for (int j = 0; j < WORKSPACE_COUNT; j++) {
-                        wmWorkspace* workspace = &wmWorkspaces[j];
                         if (window->workspaces & (1 << j)) {
                             removeWindowFromLayout(&wmWorkspaces[j], window);
-                        }
-                        else if (workspace->activeWindow == NULL) {
-                            workspace->activeWindow = window;
                         }
                     }
 
@@ -720,10 +722,7 @@ static void initAtoms() {
     long currentDesktop = wmActiveWorkspace;
     XChangeProperty(wmDisplay, wmRoot, _NET_CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)&currentDesktop, 1);
 
-    const char* desktopNames = "1\0""2\0""3\0""4\0""5\0""6\0""7\0""8\0""9\0";
-    XChangeProperty(wmDisplay, wmRoot, _NET_DESKTOP_NAMES, UTF8_STRING, 8, PropModeReplace, (unsigned char*)desktopNames, 18);
-
-    updateNetNumberOfDesktops();
+    updateWorkspaceAtoms();
 }
 static void freeWorkspaces() {
     for (int i = 0; i < LENGTH(wmWorkspaces); i++) {
@@ -882,7 +881,7 @@ void wmMoveActiveWindow(unsigned workspace) {
             destination->activeWindow = source->activeWindow;
             destination->activeWindow->workspaces = 1U << workspace;
             setActiveWindow(source, wmNextVisibleWindow(wmActiveWorkspace));
-            updateNetNumberOfDesktops();
+            updateWorkspaceAtoms();
             wmUpdateBorders();
             wmShowActiveWorkspace();
         }
@@ -907,7 +906,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
             removeWindowFromLayout(workspace, activeWindow);
             setActiveWindow(workspace, wmNextVisibleWindow(workspaceIndex));
         }
-        updateNetNumberOfDesktops();
+        updateWorkspaceAtoms();
 
         wmWorkspaces[wmActiveWorkspace].showSplitBorder = 0;
         wmUpdateBorders();
@@ -1014,7 +1013,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
 
     addWindowToLayout(workspace, new_wmWindow);
     setActiveWindow(workspace, new_wmWindow);
-    updateNetNumberOfDesktops();
+    updateWorkspaceAtoms();
     workspace->showSplitBorder = 0;
     wmUpdateBorders();
 }
@@ -1067,7 +1066,7 @@ void wmSelectWorkspace(unsigned workspaceIndex) {
     XChangeProperty(wmDisplay, wmRoot, _NET_CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)&currentDesktop, 1);
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    updateNetNumberOfDesktops();
+    updateWorkspaceAtoms();
 
     setActiveWindow(workspace, workspace->activeWindow);
     workspace->showSplitBorder = 0;
@@ -1077,6 +1076,7 @@ void wmSelectWorkspace(unsigned workspaceIndex) {
     wmUpdateBar();
 }
 void wmShowActiveWorkspace() {
+    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     int mask = 1 << wmActiveWorkspace;
     for (wmWindow* window = wmHead; window; window = window->next) {
         long data[2] = { None, None };
@@ -1086,6 +1086,10 @@ void wmShowActiveWorkspace() {
             data[0] = NormalState;
             Atom newAtoms[_NET_WM_STATE_SUPPORTED_COUNT - 1];
             removeAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, _NET_WM_STATE_SUPPORTED_COUNT, newAtoms);
+
+            if (!activeWindow) {
+                activeWindow = window;
+            }
         }
         else if (window->workspaces & mask) {
             XMapWindow(wmDisplay, window->frame);
@@ -1143,7 +1147,6 @@ void wmShowActiveWorkspace() {
 #endif
     }
 
-    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
     if (activeWindow) {
         XSetInputFocus(wmDisplay, activeWindow->window, RevertToPointerRoot, CurrentTime);
     }
