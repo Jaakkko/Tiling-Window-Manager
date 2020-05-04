@@ -25,7 +25,7 @@ int wmMouseY;
 
 unsigned wmActiveWorkspace = 0;
 
-wmDialog* wmDialogs = NULL;
+wmFloatingWindow* wmFloatingWindows = NULL;
 
 wmWindow* wmHead = NULL;
 wmWindow* wmTail = NULL;
@@ -40,6 +40,48 @@ int wmExitCode = 0;
 static Window wmcheckwin;
 static wmWindow* fullscreen = NULL;
 
+static void updateMouseCoords() {
+    Window root_return, child_return;
+    int winx, winy;
+    unsigned mask_return;
+    XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
+}
+
+static int containsAtomValue(Window window, Atom property, Atom value, unsigned maxAtomsCount) {
+    Atom type_return;
+    int format_return;
+    unsigned long nitems;
+    unsigned long bytes_after_return;
+    unsigned long* prop_return;
+    Status status = XGetWindowProperty(
+            wmDisplay,
+            window,
+            property,
+            0,
+            maxAtomsCount,
+            False,
+            AnyPropertyType,
+            &type_return,
+            &format_return,
+            &nitems,
+            &bytes_after_return,
+            (unsigned char**)&prop_return
+    );
+
+    if (status != Success) {
+        return 0;
+    }
+
+    int found = 0;
+    for (int i = 0; i < nitems; i++) {
+        if (prop_return[i] == value) {
+            found = 1;
+            break;
+        }
+    }
+    XFree(prop_return);
+    return found;
+}
 static void addAtom(Window window, Atom property, Atom value, unsigned maxAtomsCount) {
     Atom type_return;
     int format_return;
@@ -216,66 +258,6 @@ static void setActiveWindow(wmWorkspace* workspace, wmWindow* window) {
     workspace->activeWindow = window;
 }
 
-static void stateHandler(XClientMessageEvent* event) {
-    if (event->data.l[1] == _NET_WM_STATE_FULLSCREEN) {
-        wmWindow* window = wmWindowTowmWindow(event->window);
-        if (!window) {
-            return;
-        }
-
-        if (!fullscreen) {
-            XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, (unsigned char*)&_NET_WM_STATE_FULLSCREEN, 1);
-            XUnmapWindow(wmDisplay, window->frame);
-            XReparentWindow(wmDisplay, window->window, wmRoot, 0, 0);
-            fullscreen = window;
-            wmShowActiveWorkspace();
-        }
-        else {
-            XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, NULL, 0);
-            XWindowAttributes attributes;
-            if (XGetWindowAttributes(wmDisplay, window->window, &attributes)) {
-                XReparentWindow(wmDisplay, window->window, window->frame, 0, 0);
-            }
-            fullscreen = NULL;
-            wmShowActiveWorkspace();
-        }
-    }
-}
-static void requestFrameExtents(XClientMessageEvent* event) {
-    int x = gap;
-    int y = gap;
-    unsigned width = wmScreenWidth - 2 * gap;
-    unsigned height = wmScreenHeight - 2 * gap;
-
-    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    if (!workspace->layout) {
-        return;
-    }
-
-    estimateNewWindowSize(workspace->layout, workspace->splitNode, &x, &y, &width, &height);
-
-    long bounds[] = { x, y, x + width, y + height };
-    XChangeProperty(wmDisplay, event->window, _NET_FRAME_EXTENTS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)bounds, 4);
-}
-static void netActiveWindow(XClientMessageEvent* event) {
-    wmWindow* window = wmWindowTowmWindow(event->window);
-    if (window) {
-        setActiveWindow(&wmWorkspaces[wmActiveWorkspace], window);
-        wmUpdateBorders();
-    }
-}
-static void netCurrentDesktop(XClientMessageEvent* event) {
-    wmSelectWorkspace(event->data.l[0]);
-}
-
-ClientMessageHandler clientMessageHandler[] = {
-        { &_NET_WM_STATE,               stateHandler        },
-        { &_NET_REQUEST_FRAME_EXTENTS,  requestFrameExtents },
-        { &_NET_ACTIVE_WINDOW,          netActiveWindow     },
-        { &_NET_CURRENT_DESKTOP,        netCurrentDesktop   },
-};
-const unsigned clientMessageHandlersCount = LENGTH(clientMessageHandler);
-
 static void updateNetNumberOfDesktops() {
     long count = 0;
     for  (int i = 0; i < WORKSPACE_COUNT; i++) {
@@ -335,7 +317,7 @@ static void configureWindow(Window window, int x, int y, unsigned width, unsigne
     XSync(wmDisplay, False);
 }
 static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
-    if (window->dialog) {
+    if (window->floating) {
         return;
     }
 
@@ -353,7 +335,7 @@ static void removeWindowFromLayout(wmWorkspace* workspace, wmWindow* window) {
     wmSplitOrientation = NONE;
 }
 static void addWindowToLayout(wmWorkspace* workspace, wmWindow* window) {
-    if (window->dialog) {
+    if (window->floating) {
         return;
     }
 
@@ -437,6 +419,43 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
     }
 }
 
+static void setFloatingWindow(wmWindow* window, const XWindowAttributes* attributes) {
+    wmFloatingWindow* floating = calloc(1, sizeof(wmFloatingWindow));
+    floating->window = window;
+    floating->width = MIN(attributes->width, wmScreenWidth);
+    floating->height = MIN(attributes->height, wmScreenHeight);
+    window->floating = floating;
+
+    floating->x = wmScreenWidth / 2 - floating->width / 2;
+    floating->y = wmScreenHeight / 2 - floating->height / 2;
+
+    unsigned width = floating->width - 2 * borderWidth;
+    unsigned height = floating->height - 2 * borderWidth;
+
+    XMoveResizeWindow(
+            wmDisplay,
+            window->frame,
+            floating->x,
+            floating->y,
+            width,
+            height
+    );
+    XResizeWindow(wmDisplay, window->window, width, height);
+
+    configureWindow(window->window, floating->x, floating->y, width, height);
+
+    floating->next = wmFloatingWindows;
+    wmFloatingWindows = floating;
+}
+static void unsetFloatingWindow(wmWindow* window) {
+    wmFloatingWindow** next;
+    for (next = &wmFloatingWindows; *next != window->floating; next = &(*next)->next);
+    *next = (*next)->next;
+
+    free(window->floating);
+    window->floating = NULL;
+}
+
 static wmWindow* visibleWindow(size_t offset, wmWindow* head, unsigned workspace) {
     wmWindow* activeWindow = wmWorkspaces[workspace].activeWindow;
     if (activeWindow) {
@@ -450,7 +469,7 @@ static wmWindow* visibleWindow(size_t offset, wmWindow* head, unsigned workspace
             if (!focus || focus == activeWindow) {
                 return NULL;
             }
-            if (focus->workspaces & mask) {
+            if (focus->workspaces & mask || focus->floating && focus->floating->flags & FLOATING_STICKY) {
                 return focus;
             }
         }
@@ -458,6 +477,171 @@ static wmWindow* visibleWindow(size_t offset, wmWindow* head, unsigned workspace
 
     return NULL;
 }
+
+static void stateHandler(XClientMessageEvent* event) {
+    for (int i = 0; i < 2; i++) {
+        Atom property = event->data.l[i + 1];
+        if (!property) {
+            break;
+        }
+
+        if (property == _NET_WM_STATE_FULLSCREEN) {
+            wmWindow* window = wmWindowTowmWindow(event->window);
+            if (!window) {
+                return;
+            }
+            if (!fullscreen) {
+                XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, (unsigned char*)&_NET_WM_STATE_FULLSCREEN, 1);
+                XUnmapWindow(wmDisplay, window->frame);
+                XReparentWindow(wmDisplay, window->window, wmRoot, 0, 0);
+                fullscreen = window;
+                wmShowActiveWorkspace();
+            }
+            else {
+                XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeReplace, NULL, 0);
+                XWindowAttributes attributes;
+                if (XGetWindowAttributes(wmDisplay, window->window, &attributes)) {
+                    XReparentWindow(wmDisplay, window->window, window->frame, 0, 0);
+                }
+                fullscreen = NULL;
+                wmShowActiveWorkspace();
+            }
+        }
+        else if (property == _NET_WM_STATE_STICKY) {
+            wmWindow* window = wmWindowTowmWindow(event->window);
+            if (!window) {
+                return;
+            }
+
+            int enable;
+            switch (event->data.l[0]) {
+                case _NET_WM_STATE_REMOVE:
+                    enable = 0;
+                    break;
+                case _NET_WM_STATE_ADD:
+                    enable = 1;
+                    break;
+                case _NET_WM_STATE_TOGGLE: {
+                    Atom type_return;
+                    int format_return;
+                    unsigned long nitems;
+                    unsigned long bytes_after_return;
+                    unsigned long* prop_return;
+                    Status status = XGetWindowProperty(
+                            wmDisplay,
+                            window->window,
+                            _NET_WM_STATE,
+                            0,
+                            _NET_WM_STATE_SUPPORTED_COUNT,
+                            False,
+                            AnyPropertyType,
+                            &type_return,
+                            &format_return,
+                            &nitems,
+                            &bytes_after_return,
+                            (unsigned char**)&prop_return
+                    );
+
+                    if (status != Success) {
+                        enable = 1;
+                        break;
+                    }
+
+                    int found = 0;
+                    for (int j = 0; j < nitems; j++) {
+                        if (prop_return[i] == _NET_WM_STATE_STICKY) {
+                            found = 1;
+                            break;
+                        }
+                    }
+                    enable = !found;
+                    XFree(prop_return);
+                    break;
+                }
+            }
+
+            if (enable) {
+                if (!window->floating) {
+                    for (int j = 0; j < WORKSPACE_COUNT; j++) {
+                        wmWorkspace* workspace = &wmWorkspaces[j];
+                        if (window->workspaces & (1 << j)) {
+                            removeWindowFromLayout(&wmWorkspaces[j], window);
+                        }
+                        else if (workspace->activeWindow == NULL) {
+                            workspace->activeWindow = window;
+                        }
+                    }
+
+                    XWindowAttributes attrs;
+                    XGetWindowAttributes(wmDisplay, window->window, &attrs);
+                    setFloatingWindow(window, &attrs);
+                    window->floating->flags |= FLOATING_STICKY;
+                }
+                else if (window->floating->flags & FLOATING_STICKY) {
+                    continue;
+                }
+
+                XChangeProperty(wmDisplay, window->window, _NET_WM_STATE, XA_ATOM, 32, PropModeAppend, (unsigned char*)&_NET_WM_STATE_STICKY, 1);
+                wmShowActiveWorkspace();
+            }
+            else if (window->floating && window->floating->flags & FLOATING_STICKY) {
+                Atom newAtoms[_NET_WM_STATE_SUPPORTED_COUNT];
+                removeAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_STICKY, _NET_WM_STATE_SUPPORTED_COUNT, newAtoms);
+
+                window->floating->flags ^= FLOATING_STICKY;
+                if (!window->floating->flags) {
+                    unsetFloatingWindow(window);
+                }
+
+                for (int j = 0; j < WORKSPACE_COUNT; j++) {
+                    wmWorkspace* workspace = &wmWorkspaces[j];
+                    if (window->workspaces & (1 << j)) {
+                        addWindowToLayout(&wmWorkspaces[j], window);
+                    }
+                    else if (workspace->activeWindow == window) {
+                        workspace->activeWindow = wmNextVisibleWindow(j);
+                    }
+                }
+
+                wmShowActiveWorkspace();
+            }
+        }
+    }
+}
+static void requestFrameExtents(XClientMessageEvent* event) {
+    int x = gap;
+    int y = gap;
+    unsigned width = wmScreenWidth - 2 * gap;
+    unsigned height = wmScreenHeight - 2 * gap;
+
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (!workspace->layout) {
+        return;
+    }
+
+    estimateNewWindowSize(workspace->layout, workspace->splitNode, &x, &y, &width, &height);
+
+    long bounds[] = { x, y, x + width, y + height };
+    XChangeProperty(wmDisplay, event->window, _NET_FRAME_EXTENTS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)bounds, 4);
+}
+static void netActiveWindow(XClientMessageEvent* event) {
+    wmWindow* window = wmWindowTowmWindow(event->window);
+    if (window) {
+        setActiveWindow(&wmWorkspaces[wmActiveWorkspace], window);
+        wmUpdateBorders();
+    }
+}
+static void netCurrentDesktop(XClientMessageEvent* event) {
+    wmSelectWorkspace(event->data.l[0]);
+}
+
+ClientMessageHandler clientMessageHandler[] = {
+        { &_NET_WM_STATE,               stateHandler        },
+        { &_NET_REQUEST_FRAME_EXTENTS,  requestFrameExtents },
+        { &_NET_ACTIVE_WINDOW,          netActiveWindow     },
+        { &_NET_CURRENT_DESKTOP,        netCurrentDesktop   },
+};
+const unsigned clientMessageHandlersCount = LENGTH(clientMessageHandler);
 
 /*
  * Initialization, event loop, cleanup
@@ -468,7 +652,8 @@ static int onWMDetected(Display* d, XErrorEvent* e) {
     return 0;
 }
 static int errorHandler(Display* d, XErrorEvent* e) {
-    logmsg("Error: %x", e->error_code);
+    logmsg("Error: %x, %i", e->error_code, e->serial);
+
     return 0;
 }
 static void initAtoms() {
@@ -490,6 +675,7 @@ static void initAtoms() {
     _NET_FRAME_EXTENTS              = XInternAtom(wmDisplay, "_NET_FRAME_EXTENTS", False);
     _NET_WM_NAME                    = XInternAtom(wmDisplay, "_NET_WM_NAME", False);
     _NET_WM_STATE                   = XInternAtom(wmDisplay, "_NET_WM_STATE", False);
+    _NET_WM_STATE_STICKY            = XInternAtom(wmDisplay, "_NET_WM_STATE_STICKY", False);
     _NET_WM_STATE_HIDDEN            = XInternAtom(wmDisplay, "_NET_WM_STATE_HIDDEN", False);
     _NET_WM_STATE_FULLSCREEN        = XInternAtom(wmDisplay, "_NET_WM_STATE_FULLSCREEN", False);
 
@@ -507,6 +693,7 @@ static void initAtoms() {
             _NET_FRAME_EXTENTS,
             _NET_WM_NAME,
             _NET_WM_STATE,
+            _NET_WM_STATE_STICKY,
             _NET_WM_STATE_HIDDEN,
             _NET_WM_STATE_FULLSCREEN,
     };
@@ -659,6 +846,7 @@ void wmFree() {
     wmWindow* next;
     for (wmWindow* wmWindow = wmHead; wmWindow; wmWindow = next) {
         next = wmWindow->next;
+        XRemoveFromSaveSet(wmDisplay, wmWindow->window);
         XReparentWindow(wmDisplay, wmWindow->window, wmRoot, 0, 0);
         XDestroyWindow(wmDisplay, wmWindow->frame);
         free(wmWindow);
@@ -730,11 +918,16 @@ void wmFocusWindow(wmWindow* window) {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     setActiveWindow(workspace, window);
     workspace->showSplitBorder = 0;
-    workspace->splitNode = findNode(workspace->layout, workspace->activeWindow);
+    wmNode* split = findNode(workspace->layout, workspace->activeWindow);
+    if (split) {
+        workspace->splitNode = split;
+    }
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
     wmUpdateBorders();
 }
 void wmRequestCloseWindow(wmWindow* window) {
+    XRemoveFromSaveSet(wmDisplay, window->window);
+
     Atom* supportedProtocols;
     int numSupportedProtocols;
     if (XGetWMProtocols(wmDisplay, window->window, &supportedProtocols, &numSupportedProtocols)) {
@@ -766,6 +959,8 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     if (attributes->override_redirect) {
         return;
     }
+
+    XAddToSaveSet(wmDisplay, window);
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
 
@@ -805,32 +1000,12 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     attachWindow(new_wmWindow);
 
     Window parent;
-    if (XGetTransientForHint(wmDisplay, window, &parent)) {
-        wmDialog* dialog = calloc(1, sizeof(wmDialog));
-        dialog->window = new_wmWindow;
-        dialog->width = MIN(attributes->width, wmScreenWidth);
-        dialog->height = MIN(attributes->height, wmScreenHeight);
-        new_wmWindow->dialog = dialog;
-
-        dialog->x = wmScreenWidth / 2 - dialog->width / 2;
-        dialog->y = wmScreenHeight / 2 - dialog->height / 2;
-        unsigned width = dialog->width - 2 * borderWidth;
-        unsigned height = dialog->height - 2 * borderWidth;
-
-        XMoveResizeWindow(
-                wmDisplay,
-                frame,
-                dialog->x,
-                dialog->y,
-                width,
-                height
-        );
-        XResizeWindow(wmDisplay, window, width, height);
-
-        configureWindow(window, dialog->x, dialog->y, width, height);
-
-        dialog->next = wmDialogs;
-        wmDialogs = dialog;
+    int dialog = XGetTransientForHint(wmDisplay, window, &parent);
+    int sticky = containsAtomValue(window, _NET_WM_STATE, _NET_WM_STATE_STICKY, _NET_WM_STATE_SUPPORTED_COUNT);
+    if (dialog || sticky) {
+        setFloatingWindow(new_wmWindow, attributes);
+        if (dialog) new_wmWindow->floating->flags |= FLOATING_DIALOG;
+        if (sticky) new_wmWindow->floating->flags |= FLOATING_STICKY;
     }
 
     addWindowToLayout(workspace, new_wmWindow);
@@ -859,12 +1034,8 @@ void wmFreeWindow(wmWindow* window) {
         }
     }
 
-    if (window->dialog) {
-        wmDialog** next;
-        for (next = &wmDialogs; *next != window->dialog; next = &(*next)->next);
-        *next = (*next)->next;
-
-        free(window->dialog);
+    if (window->floating) {
+        unsetFloatingWindow(window);
     }
 
     detachWindow(window);
@@ -905,18 +1076,23 @@ void wmShowActiveWorkspace() {
     int mask = 1 << wmActiveWorkspace;
     for (wmWindow* window = wmHead; window; window = window->next) {
         long data[2] = { None, None };
-        if (window->workspaces & mask) {
+        if (window->floating && window->floating->flags | FLOATING_STICKY) {
+            XRaiseWindow(wmDisplay, window->frame);
             XMapWindow(wmDisplay, window->frame);
             data[0] = NormalState;
-
-            Atom newAtoms[WM_STATE_SUPPORTED_COUNT - 1];
-            removeAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, WM_STATE_SUPPORTED_COUNT, newAtoms);
+            Atom newAtoms[_NET_WM_STATE_SUPPORTED_COUNT - 1];
+            removeAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, _NET_WM_STATE_SUPPORTED_COUNT, newAtoms);
+        }
+        else if (window->workspaces & mask) {
+            XMapWindow(wmDisplay, window->frame);
+            data[0] = NormalState;
+            Atom newAtoms[_NET_WM_STATE_SUPPORTED_COUNT - 1];
+            removeAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, _NET_WM_STATE_SUPPORTED_COUNT, newAtoms);
         }
         else {
             XUnmapWindow(wmDisplay, window->frame);
             data[0] = IconicState;
-
-            addAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, WM_STATE_SUPPORTED_COUNT);
+            addAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, _NET_WM_STATE_SUPPORTED_COUNT);
         }
 
         XChangeProperty(wmDisplay, window->window, WM_STATE, WM_STATE, 32, PropModeReplace, (unsigned char*)data, 2);
@@ -950,11 +1126,7 @@ void wmShowActiveWorkspace() {
             configureWindow(layout->window->window, 0, y, wmScreenWidth, height);
         }
         else {
-            Window root_return, child_return;
-            int winx, winy;
-            unsigned mask_return;
-            XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
-
+            updateMouseCoords();
             showNode(layout, wmWindowAreaX, wmWindowAreaY, wmWindowAreaWidth, wmWindowAreaHeight);
         }
 #else
@@ -1050,7 +1222,7 @@ static void updateBorders(wmNode* node, int belowSplit) {
 }
 void wmUpdateBorders() {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    for (wmDialog* d = wmDialogs; d; d = d->next) {
+    for (wmFloatingWindow* d = wmFloatingWindows; d; d = d->next) {
         XSetWindowBorder(
                 wmDisplay,
                 d->window->frame,
@@ -1182,7 +1354,7 @@ void wmMoveLowerEdgeVertically(wmVerticalDirection direction) {
 }
 
 void wmConfigureWindow(wmWindow* window) {
-    wmDialog* dialog = window->dialog;
+    wmFloatingWindow* dialog = window->floating;
     if (dialog) {
         configureWindow(window->window, dialog->x, dialog->y, dialog->width, dialog->height);
         return;

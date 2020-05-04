@@ -16,7 +16,7 @@ int wmMouseY;
 
 unsigned wmActiveWorkspace;
 
-wmDialog* wmDialogs;
+wmFloatingWindow* wmFloatingWindows;
 
 wmWindow* wmHead;
 wmWindow* wmTail;
@@ -45,7 +45,11 @@ int wmWindowAreaY;
 int wmWindowAreaWidth;
 int wmWindowAreaHeight;
 
-#define WM_STATE_SUPPORTED_COUNT 2
+#define _NET_WM_STATE_SUPPORTED_COUNT 3
+
+#define _NET_WM_STATE_REMOVE        0    /* remove/unset property */
+#define _NET_WM_STATE_ADD           1    /* add/set property */
+#define _NET_WM_STATE_TOGGLE        2    /* toggle property  */
 
 Atom
     WM_PROTOCOLS,
@@ -66,6 +70,7 @@ Atom
     _NET_FRAME_EXTENTS,
     _NET_WM_NAME,
     _NET_WM_STATE,
+    _NET_WM_STATE_STICKY,
     _NET_WM_STATE_HIDDEN,
     _NET_WM_STATE_FULLSCREEN;
 

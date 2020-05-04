@@ -7,7 +7,7 @@
 
 typedef struct wmWindow wmWindow;
 typedef struct wmNode wmNode;
-typedef struct wmDialog wmDialog;
+typedef struct wmFloatingWindow wmFloatingWindow;
 
 typedef struct {
     wmWindow* activeWindow;
@@ -16,13 +16,17 @@ typedef struct {
     unsigned showSplitBorder;
 } wmWorkspace;
 
-struct wmDialog {
+#define FLOATING_DIALOG 1 << 1
+#define FLOATING_STICKY 1 << 2
+
+struct wmFloatingWindow {
     wmWindow* window;
     int x;
     int y;
     unsigned width;
     unsigned height;
-    wmDialog* next;
+    int flags;
+    wmFloatingWindow* next;
 };
 
 typedef enum { HORIZONTAL, VERTICAL, NONE } wmSplitMode;
@@ -33,7 +37,7 @@ struct wmWindow {
     Window window;
     Window frame;
     unsigned workspaces;
-    wmDialog* dialog;
+    wmFloatingWindow* floating;
 };
 
 struct wmNode {
