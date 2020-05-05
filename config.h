@@ -104,4 +104,6 @@ static const KeyBinding keyBindings[] = {
         WORKSPACE(9)
 };
 
+#define RESIZE_DISTANCE 60
+
 #endif

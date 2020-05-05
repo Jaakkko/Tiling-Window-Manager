@@ -814,8 +814,16 @@ int wmInitialize() {
         wmColormap = DefaultColormap(wmDisplay, screen);
     }
 
-    wmCursors[CURSOR_DEFAULT] = XCreateFontCursor(wmDisplay, XC_arrow);
-    wmCursors[CURSOR_DRAG] = XCreateFontCursor(wmDisplay, XC_fleur);
+    wmCursors[CURSOR_DEFAULT]               = XCreateFontCursor(wmDisplay, XC_arrow);
+    wmCursors[CURSOR_DRAG]                  = XCreateFontCursor(wmDisplay, XC_fleur);
+    wmCursors[CURSOR_RESIZE_TOP_LEFT]       = XCreateFontCursor(wmDisplay, XC_top_left_corner);
+    wmCursors[CURSOR_RESIZE_TOP]            = XCreateFontCursor(wmDisplay, XC_top_side);
+    wmCursors[CURSOR_RESIZE_TOP_RIGHT]      = XCreateFontCursor(wmDisplay, XC_top_right_corner);
+    wmCursors[CURSOR_RESIZE_RIGHT]          = XCreateFontCursor(wmDisplay, XC_right_side);
+    wmCursors[CURSOR_RESIZE_BOTTOM_RIGHT]   = XCreateFontCursor(wmDisplay, XC_bottom_right_corner);
+    wmCursors[CURSOR_RESIZE_BOTTOM]         = XCreateFontCursor(wmDisplay, XC_bottom_side);
+    wmCursors[CURSOR_RESIZE_BOTTOM_LEFT]    = XCreateFontCursor(wmDisplay, XC_bottom_left_corner);
+    wmCursors[CURSOR_RESIZE_LEFT]           = XCreateFontCursor(wmDisplay, XC_left_side);
     XDefineCursor(wmDisplay, wmRoot, wmCursors[CURSOR_DEFAULT]);
 
     wmCreateBar();
@@ -998,6 +1006,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
 
     XGrabButton(wmDisplay, Button1, 0, window, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
     XGrabButton(wmDisplay, Button1, MOD, window, False, ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+    XGrabButton(wmDisplay, Button3, MOD, window, False, ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
 
     XSelectInput(wmDisplay, frame, SubstructureNotifyMask | SubstructureRedirectMask);
     XSelectInput(wmDisplay, window, EnterWindowMask | FocusChangeMask);

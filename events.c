@@ -60,6 +60,68 @@ void wmButtonPress(XEvent event) {
             while (ev.type != ButtonRelease);
             XUngrabPointer(wmDisplay, CurrentTime);
         }
+        else if (e->button == Button3) {
+            wmUpdateMouseCoords();
+            int left = (wmMouseX - w->floating->x) < RESIZE_DISTANCE;
+            int right = (w->floating->x + w->floating->width - wmMouseX) < RESIZE_DISTANCE;
+            int top = (wmMouseY - w->floating->y) < RESIZE_DISTANCE;
+            int bottom = (w->floating->y + w->floating->height - wmMouseY) < RESIZE_DISTANCE;
+            int cursor = CURSOR_LAST;
+            if (left && top)
+                cursor = CURSOR_RESIZE_TOP_LEFT;
+            else if (right && top)
+                cursor = CURSOR_RESIZE_TOP_RIGHT;
+            else if (right && bottom)
+                cursor = CURSOR_RESIZE_BOTTOM_RIGHT;
+            else if (bottom && left)
+                cursor = CURSOR_RESIZE_BOTTOM_LEFT;
+            else if (left)
+                cursor = CURSOR_RESIZE_LEFT;
+            else if (right)
+                cursor = CURSOR_RESIZE_RIGHT;
+            else if (top)
+                cursor = CURSOR_RESIZE_TOP;
+            else if (bottom)
+                cursor = CURSOR_RESIZE_BOTTOM;
+
+            if (cursor == CURSOR_LAST) {
+                return;
+            }
+
+            if (XGrabPointer(wmDisplay, wmRoot, False, ButtonReleaseMask | ButtonPressMask | PointerMotionMask, GrabModeAsync, GrabModeAsync, None, wmCursors[cursor], CurrentTime) != GrabSuccess) {
+                return;
+            }
+
+            int lastX, lastY;
+            int dx, dy;
+            XEvent ev;
+            do {
+                XMaskEvent(wmDisplay, ButtonReleaseMask | ButtonPressMask | PointerMotionMask, &ev);
+                switch (ev.type) {
+                    case MotionNotify:
+                        lastX = wmMouseX;
+                        lastY = wmMouseY;
+                        wmUpdateMouseCoords();
+                        dx = wmMouseX - lastX;
+                        dy = wmMouseY - lastY;
+                        w->floating->x += dx * left;
+                        w->floating->y += dy * top;
+                        w->floating->width += dx * (right - left);
+                        w->floating->height += dy * (bottom - top);
+                        XMoveResizeWindow(wmDisplay, w->frame, w->floating->x, w->floating->y, w->floating->width, w->floating->height);
+                        XWindowChanges wc;
+                        wc.x = 0;
+                        wc.y = 0;
+                        wc.width = w->floating->width;
+                        wc.height = w->floating->height;
+                        XConfigureWindow(wmDisplay, w->window, CWX | CWY | CWWidth | CWHeight, &wc);
+                        wmConfigureWindow(w);
+                        break;
+                }
+            }
+            while (ev.type != ButtonRelease);
+            XUngrabPointer(wmDisplay, CurrentTime);
+        }
     }
 }
 
