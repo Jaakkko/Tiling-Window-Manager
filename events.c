@@ -30,6 +30,37 @@ void wmButtonPress(XEvent event) {
         }
         XAllowEvents(wmDisplay, ReplayPointer, CurrentTime);
     }
+    else if (e->state == MOD) {
+        wmWindow* w = wmWindowTowmWindow(e->window);
+        if (!w || !w->floating) {
+            return;
+        }
+
+        if (e->button == Button1) {
+            if (XGrabPointer(wmDisplay, wmRoot, False, ButtonReleaseMask | ButtonPressMask | PointerMotionMask, GrabModeAsync, GrabModeAsync, None, wmCursors[CURSOR_DRAG], CurrentTime) != GrabSuccess) {
+                return;
+            }
+
+            wmUpdateMouseCoords();
+            int lastX, lastY;
+            XEvent ev;
+            do {
+                XMaskEvent(wmDisplay, ButtonReleaseMask | ButtonPressMask | PointerMotionMask, &ev);
+                switch (ev.type) {
+                    case MotionNotify:
+                        lastX = wmMouseX;
+                        lastY = wmMouseY;
+                        wmUpdateMouseCoords();
+                        w->floating->x = w->floating->x + wmMouseX - lastX;
+                        w->floating->y = w->floating->y + wmMouseY - lastY;
+                        XMoveWindow(wmDisplay, w->frame, w->floating->x, w->floating->y);
+                        break;
+                }
+            }
+            while (ev.type != ButtonRelease);
+            XUngrabPointer(wmDisplay, CurrentTime);
+        }
+    }
 }
 
 void wmEnterNotify(XEvent event) {

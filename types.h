@@ -54,4 +54,6 @@ struct wmNode {
 
 typedef enum { MOVE_LEFT, MOVE_UP, MOVE_RIGHT, MOVE_DOWN } wmMoveDirection;
 
+typedef enum { CURSOR_DEFAULT, CURSOR_DRAG, CURSOR_LAST } wmCursorTypes;
+
 #endif //WM_TYPES_H

@@ -31,7 +31,7 @@ extern wmWorkspace wmWorkspaces[];
 int wmRunning;
 int wmExitCode;
 
-Cursor wmCursor;
+Cursor wmCursors[CURSOR_LAST];
 
 Display* wmDisplay;
 Window wmRoot;
@@ -112,5 +112,7 @@ void wmMoveLowerEdgeVertically(wmVerticalDirection direction);
 void wmConfigureWindow(wmWindow* window);
 
 void wmMoveNode(wmMoveDirection direction);
+
+void wmUpdateMouseCoords();
 
 #endif //WM_INSTANCE_H

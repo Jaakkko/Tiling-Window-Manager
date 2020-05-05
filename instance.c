@@ -41,13 +41,6 @@ int wmExitCode = 0;
 static Window wmcheckwin;
 static wmWindow* fullscreen = NULL;
 
-static void updateMouseCoords() {
-    Window root_return, child_return;
-    int winx, winy;
-    unsigned mask_return;
-    XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &winx, &winy, &mask_return);
-}
-
 static int getAction(Window window, long* data) {
     int add;
     switch (data[0]) {
@@ -821,8 +814,9 @@ int wmInitialize() {
         wmColormap = DefaultColormap(wmDisplay, screen);
     }
 
-    wmCursor = XCreateFontCursor(wmDisplay, XC_arrow);
-    XDefineCursor(wmDisplay, wmRoot, wmCursor);
+    wmCursors[CURSOR_DEFAULT] = XCreateFontCursor(wmDisplay, XC_arrow);
+    wmCursors[CURSOR_DRAG] = XCreateFontCursor(wmDisplay, XC_fleur);
+    XDefineCursor(wmDisplay, wmRoot, wmCursors[CURSOR_DEFAULT]);
 
     wmCreateBar();
     wmWindowAreaX = gap;
@@ -867,7 +861,9 @@ void wmFree() {
     }
     XUngrabServer(wmDisplay);
 
-    XFreeCursor(wmDisplay, wmCursor);
+    for (int i = 0; i < CURSOR_LAST; i++) {
+        XFreeCursor(wmDisplay, wmCursors[i]);
+    }
 
     XCloseDisplay(wmDisplay);
 }
@@ -1001,6 +997,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&window, 1);
 
     XGrabButton(wmDisplay, Button1, 0, window, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+    XGrabButton(wmDisplay, Button1, MOD, window, False, ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
 
     XSelectInput(wmDisplay, frame, SubstructureNotifyMask | SubstructureRedirectMask);
     XSelectInput(wmDisplay, window, EnterWindowMask | FocusChangeMask);
@@ -1150,7 +1147,7 @@ void wmShowActiveWorkspace() {
             configureWindow(layout->window->window, 0, y, wmScreenWidth, height);
         }
         else {
-            updateMouseCoords();
+            wmUpdateMouseCoords();
             showNode(layout, wmWindowAreaX, wmWindowAreaY, wmWindowAreaWidth, wmWindowAreaHeight);
         }
 #else
@@ -1449,4 +1446,10 @@ void wmMoveNode(wmMoveDirection direction) {
             wmShowActiveWorkspace();
             break;
     }
+}
+
+void wmUpdateMouseCoords() {
+    Window root_return, child_return;
+    int d;
+    XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &d, &d, (unsigned*)&d);
 }
