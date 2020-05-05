@@ -300,12 +300,30 @@ static void detachWindow(wmWindow* window) {
     }
 }
 
+static void updateNetFrameExtens(Window window) {
+#ifdef smartGaps
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    long bw = (!workspace->layout || workspace->layout->window) ? 0 : borderWidth;
+    long bounds[] = { bw, bw, bw, bw };
+#else
+    long bounds[] = { borderWidth, borderWidth, borderWidth, borderWidth };
+#endif
+    XChangeProperty(wmDisplay, window, _NET_FRAME_EXTENTS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)bounds, 4);
+}
+
 static void configureWindow(Window window, int x, int y, unsigned width, unsigned height) {
     XConfigureEvent event;
     event.type = ConfigureNotify;
     event.border_width = 0;
+#ifdef smartGaps
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    long bw = (!workspace->layout || workspace->layout->window) ? 0 : borderWidth;
+    event.x = x + bw;
+    event.y = y + bw;
+#else
     event.x = x + borderWidth;
     event.y = y + borderWidth;
+#endif
     event.width = width;
     event.height = height;
     event.display = wmDisplay;
@@ -365,8 +383,6 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         y += gap;
         height -= 2 * (gap + borderWidth);
         width -= 2 * (gap + borderWidth);
-        XMoveResizeWindow(wmDisplay, node->window->frame, x, y, width, height);
-        XResizeWindow(wmDisplay, node->window->window, width, height);
 
         int left = node->x;
         int right = node->x + node->width;
@@ -391,7 +407,15 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
             wmSkipNextEnterNotify = 1;
         }
 
-        configureWindow(node->window->window, node->x, node->y, node->width, node->height);
+        XWindowChanges wc;
+        wc.x = 0;
+        wc.y = 0;
+        wc.width = width;
+        wc.height = height;
+        XConfigureWindow(wmDisplay, node->window->window, CWX | CWY | CWWidth | CWHeight, &wc);
+        XMoveResizeWindow(wmDisplay, node->window->frame, x, y, width, height);
+        configureWindow(node->window->window, x, y, node->width, node->height);
+        updateNetFrameExtens(node->window->window);
     }
     else {
         node->x = x;
@@ -609,20 +633,7 @@ static void stateHandler(XClientMessageEvent* event) {
     }
 }
 static void requestFrameExtents(XClientMessageEvent* event) {
-    int x = gap;
-    int y = gap;
-    unsigned width = wmScreenWidth - 2 * gap;
-    unsigned height = wmScreenHeight - 2 * gap;
-
-    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    if (!workspace->layout) {
-        return;
-    }
-
-    estimateNewWindowSize(workspace->layout, workspace->splitNode, &x, &y, &width, &height);
-
-    long bounds[] = { x, y, x + width, y + height };
-    XChangeProperty(wmDisplay, event->window, _NET_FRAME_EXTENTS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)bounds, 4);
+    updateNetFrameExtens(event->window);
 }
 static void netActiveWindow(XClientMessageEvent* event) {
     wmWindow* window = wmWindowTowmWindow(event->window);
@@ -1121,8 +1132,13 @@ void wmShowActiveWorkspace() {
             layout->width = wmScreenWidth;
             layout->height = height;
 
+            XWindowChanges wc;
+            wc.x = 0;
+            wc.y = 0;
+            wc.width = wmScreenWidth;
+            wc.height = height;
+            XConfigureWindow(wmDisplay, layout->window->window, CWX | CWY | CWWidth | CWHeight, &wc);
             XMoveResizeWindow(wmDisplay, layout->window->frame, 0, y, wmScreenWidth, height);
-            XResizeWindow(wmDisplay, layout->window->window, wmScreenWidth, height);
             configureWindow(layout->window->window, 0, y, wmScreenWidth, height);
         }
         else {
