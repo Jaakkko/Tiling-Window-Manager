@@ -19,8 +19,9 @@ void closeActiveWindow(Arg a) {
 }
 
 void focus(Arg a) {
-    wmWindow* activeWindow = wmWorkspaces[wmActiveWorkspace].activeWindow;
-    if (activeWindow) {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    wmWindow* activeWindow = workspace->activeWindow;
+    if (activeWindow && workspace->fullscreen == NULL) {
         wmWindow* focus =
                 a.i == 1
                 ? wmNextVisibleWindow(wmActiveWorkspace)

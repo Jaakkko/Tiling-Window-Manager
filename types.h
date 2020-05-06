@@ -14,6 +14,7 @@ typedef struct {
     wmNode* layout;
     wmNode* splitNode;
     unsigned showSplitBorder;
+    wmWindow* fullscreen;
 } wmWorkspace;
 
 #define FLOATING_DIALOG 1 << 1
@@ -38,6 +39,7 @@ struct wmWindow {
     Window frame;
     unsigned workspaces;
     wmFloatingWindow* floating;
+    int fullscreen;
 };
 
 struct wmNode {
