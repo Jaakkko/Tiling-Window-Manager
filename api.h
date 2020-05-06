@@ -26,5 +26,6 @@ void moveRightEdgeHorizontally(Arg);
 void moveUpperEdgeVertically(Arg);
 void moveLowerEdgeVertically(Arg);
 void moveNode(Arg);
+void toggleFullscreen(Arg);
 
 #endif //WM_API_H

@@ -91,3 +91,7 @@ void moveLowerEdgeVertically(Arg a) {
 void moveNode(Arg a) {
     wmMoveNode(a.i);
 }
+
+void toggleFullscreen(Arg a) {
+    wmToggleFullscreen();
+}

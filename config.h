@@ -92,6 +92,7 @@ static const KeyBinding keyBindings[] = {
         { MOD | ShiftMask,    XK_J,        moveNode,                  { .i = MOVE_DOWN       } },
         { MOD | ShiftMask,    XK_K,        moveNode,                  { .i = MOVE_UP         } },
         { MOD | ShiftMask,    XK_L,        moveNode,                  { .i = MOVE_RIGHT      } },
+        { MOD,                XK_F,        toggleFullscreen,          {                      } },
 
         WORKSPACE(1)
         WORKSPACE(2)

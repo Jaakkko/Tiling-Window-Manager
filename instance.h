@@ -115,4 +115,6 @@ void wmMoveNode(wmMoveDirection direction);
 
 void wmUpdateMouseCoords();
 
+void wmToggleFullscreen();
+
 #endif //WM_INSTANCE_H

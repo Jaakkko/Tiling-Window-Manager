@@ -40,7 +40,7 @@ int wmExitCode = 0;
 
 static Window wmcheckwin;
 
-static int getAction(Window window, long* data) {
+static int getAction(Window window, long* data, Atom atom) {
     int add;
     switch (data[0]) {
         case _NET_WM_STATE_REMOVE:
@@ -77,7 +77,7 @@ static int getAction(Window window, long* data) {
 
             int found = 0;
             for (int j = 0; j < nitems; j++) {
-                if (prop_return[j] == _NET_WM_STATE_STICKY) {
+                if (prop_return[j] == atom) {
                     found = 1;
                     break;
                 }
@@ -610,12 +610,15 @@ static void stateHandler(XClientMessageEvent* event) {
             if (!window) {
                 return;
             }
-            int enable = getAction(window->window, event->data.l);
+            int enable = getAction(window->window, event->data.l, _NET_WM_STATE_FULLSCREEN);
             if (enable) {
-                setFullscreen(window);
-                wmShowActiveWorkspace();
+                if (!window->fullscreen) {
+                    setFullscreen(window);
+                    wmShowActiveWorkspace();
+                }
             }
-            else {
+            else if (window->fullscreen) {
+                wmSkipNextEnterNotify = 1;
                 unsetFullscreen(window);
                 wmShowActiveWorkspace();
             }
@@ -626,7 +629,7 @@ static void stateHandler(XClientMessageEvent* event) {
                 return;
             }
 
-            int enable = getAction(window->window, event->data.l);
+            int enable = getAction(window->window, event->data.l, _NET_WM_STATE_STICKY);
             if (enable) {
                 if (!window->floating) {
                     for (int j = 0; j < WORKSPACE_COUNT; j++) {
@@ -1173,9 +1176,20 @@ void wmShowActiveWorkspace() {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     wmWindow* activeWindow = workspace->activeWindow;
     if (workspace->fullscreen) {
+        XUnmapWindow(wmDisplay, wmBarWindow);
         XMoveResizeWindow(wmDisplay, workspace->fullscreen->window, 0, 0, wmScreenWidth, wmScreenHeight);
+        for (wmWindow* window = wmHead; window; window = window->next) {
+            if (!window->fullscreen) {
+                long data[2] = { None, None };
+                XUnmapWindow(wmDisplay, window->frame);
+                data[0] = IconicState;
+                addAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, _NET_WM_STATE_SUPPORTED_COUNT);
+                XChangeProperty(wmDisplay, window->window, WM_STATE, WM_STATE, 32, PropModeReplace, (unsigned char*)data, 2);
+            }
+        }
     }
     else {
+        XMapWindow(wmDisplay, wmBarWindow);
         int mask = 1 << wmActiveWorkspace;
         for (wmWindow* window = wmHead; window; window = window->next) {
             long data[2] = { None, None };
@@ -1539,4 +1553,20 @@ void wmUpdateMouseCoords() {
     Window root_return, child_return;
     int d;
     XQueryPointer(wmDisplay, wmRoot, &root_return, &child_return, &wmMouseX, &wmMouseY, &d, &d, (unsigned*)&d);
+}
+
+void wmToggleFullscreen() {
+    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (workspace->activeWindow) {
+        XEvent e;
+        e.type = ClientMessage;
+        e.xclient.window = workspace->activeWindow->window;
+        e.xclient.message_type = _NET_WM_STATE;
+        e.xclient.format = 32;
+        e.xclient.data.l[0] = _NET_WM_STATE_TOGGLE;
+        e.xclient.data.l[1] = _NET_WM_STATE_FULLSCREEN;
+        e.xclient.data.l[2] = 0;
+        e.xclient.data.l[3] = 0;
+        XSendEvent(wmDisplay, wmRoot, False, SubstructureNotifyMask | SubstructureRedirectMask, &e);
+    }
 }
