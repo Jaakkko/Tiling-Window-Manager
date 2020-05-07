@@ -151,6 +151,18 @@ void wmExpose(XEvent event) {
     }
 }
 
+void wmConfigureNotify(XEvent event) {
+    XConfigureEvent* e = &event.xconfigure;
+    if (e->window == wmRoot) {
+        wmScreenWidth = e->width;
+        wmScreenHeight = e->height;
+
+        wmUpdateBounds();
+        wmUpdateBarBounds();
+        wmShowActiveWorkspace();
+    }
+}
+
 void wmConfigureRequest(XEvent event) {
     XConfigureRequestEvent* ev = &event.xconfigurerequest;
     wmWindow* window = wmWindowTowmWindow(ev->window);
@@ -208,6 +220,7 @@ void (*handler[LASTEvent])(XEvent) = {
         [ButtonPress] = wmButtonPress,
         [EnterNotify] = wmEnterNotify,
         [Expose] = wmExpose,
+        [ConfigureNotify] = wmConfigureNotify,
         [ConfigureRequest] = wmConfigureRequest,
         [MapRequest] = wmMapRequest,
         [DestroyNotify] = wmDestroyNotify,

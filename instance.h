@@ -112,6 +112,7 @@ void wmMoveUpperEdgeVertically(wmVerticalDirection direction);
 void wmMoveLowerEdgeVertically(wmVerticalDirection direction);
 
 void wmConfigureWindow(wmWindow* window);
+void wmUpdateBounds();
 
 void wmMoveNode(wmMoveDirection direction);
 

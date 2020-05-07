@@ -814,7 +814,7 @@ int wmInitialize() {
     wmScreenHeight = DisplayHeight(wmDisplay, screen);
 
     XSetErrorHandler(onWMDetected);
-    XSelectInput(wmDisplay, wmRoot, SubstructureRedirectMask | SubstructureNotifyMask);
+    XSelectInput(wmDisplay, wmRoot, StructureNotifyMask | SubstructureRedirectMask | SubstructureNotifyMask);
     XSync(wmDisplay, False);
     if (wmDetected) {
         XCloseDisplay(wmDisplay);
@@ -870,14 +870,7 @@ int wmInitialize() {
     XDefineCursor(wmDisplay, wmRoot, wmCursors[CURSOR_DEFAULT]);
 
     wmCreateBar();
-    wmWindowAreaX = gap;
-#ifdef bottomBar
-    wmWindowAreaY = gap;
-#else
-    wmWindowAreaY = gap + wmBarHeight;
-#endif
-    wmWindowAreaWidth = wmScreenWidth - 2 * gap;
-    wmWindowAreaHeight = wmScreenHeight - 2 * gap - wmBarHeight;
+    wmUpdateBounds();
 
     initializeKeyBindings();
     queryWindows();
@@ -1493,6 +1486,16 @@ void wmConfigureWindow(wmWindow* window) {
     if (node) {
         configureWindow(window->window, node->x, node->y, node->width, node->height);
     }
+}
+void wmUpdateBounds() {
+    wmWindowAreaX = gap;
+#ifdef bottomBar
+    wmWindowAreaY = gap;
+#else
+    wmWindowAreaY = gap + wmBarHeight;
+#endif
+    wmWindowAreaWidth = wmScreenWidth - 2 * gap;
+    wmWindowAreaHeight = wmScreenHeight - 2 * gap - wmBarHeight;
 }
 
 void wmMoveNode(wmMoveDirection direction) {

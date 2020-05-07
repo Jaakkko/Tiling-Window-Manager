@@ -11,6 +11,7 @@ void wmKeyPress(XEvent event);
 void wmButtonPress(XEvent event);
 void wmEnterNotify(XEvent event);
 void wmExpose(XEvent event);
+void wmConfigureNotify(XEvent event);
 void wmConfigureRequest(XEvent event);
 void wmMapRequest(XEvent event);
 void wmDestroyNotify(XEvent event);

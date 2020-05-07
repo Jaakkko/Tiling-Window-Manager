@@ -209,6 +209,20 @@ void wmExposeBar() {
     pthread_mutex_unlock(&blocksLock);
 }
 
+void wmUpdateBarBounds() {
+    wmBarHeight = 2 * barPadding + font->ascent + font->descent;
+    textY = (wmBarHeight - (font->ascent + font->descent)) / 2 + font->ascent;
+
+    XMoveResizeWindow(
+            wmDisplay, wmBarWindow, 0,
+#ifdef bottomBar
+            wmScreenHeight - wmBarHeight,
+#else
+            0,
+#endif
+            wmScreenWidth, wmBarHeight);
+}
+
 void wmDestroyBar() {
     XftColorFree(wmDisplay, wmVisual, wmColormap, &textUnselectedColor);
     XftColorFree(wmDisplay, wmVisual, wmColormap, &textSelectedColor);
