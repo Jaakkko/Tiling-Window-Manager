@@ -1075,6 +1075,9 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
 
     XChangeProperty(wmDisplay, wmRoot, _NET_CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, (unsigned char*)&window, 1);
 
+    Atom allowed[] = { _NET_WM_ACTION_FULLSCREEN };
+    XChangeProperty(wmDisplay, window, _NET_WM_ALLOWED_ACTIONS, XA_ATOM, 32, PropModeReplace, (unsigned char*)allowed, LENGTH(allowed));
+
     XGrabButton(wmDisplay, Button1, 0, window, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
     XGrabButton(wmDisplay, Button1, MOD, window, False, ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
     XGrabButton(wmDisplay, Button3, MOD, window, False, ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
