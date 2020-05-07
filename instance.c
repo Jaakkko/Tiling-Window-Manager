@@ -853,6 +853,8 @@ static void initAtoms() {
     _NET_WM_STATE_STICKY            = XInternAtom(wmDisplay, "_NET_WM_STATE_STICKY", False);
     _NET_WM_STATE_HIDDEN            = XInternAtom(wmDisplay, "_NET_WM_STATE_HIDDEN", False);
     _NET_WM_STATE_FULLSCREEN        = XInternAtom(wmDisplay, "_NET_WM_STATE_FULLSCREEN", False);
+    _NET_WM_ALLOWED_ACTIONS         = XInternAtom(wmDisplay, "_NET_WM_ALLOWED_ACTIONS", False);
+    _NET_WM_ACTION_FULLSCREEN       = XInternAtom(wmDisplay, "_NET_WM_ACTION_FULLSCREEN", False);
 
     Atom supported[] = {
             _NET_SUPPORTED,
@@ -871,6 +873,8 @@ static void initAtoms() {
             _NET_WM_STATE_STICKY,
             _NET_WM_STATE_HIDDEN,
             _NET_WM_STATE_FULLSCREEN,
+            _NET_WM_ALLOWED_ACTIONS,
+            _NET_WM_ACTION_FULLSCREEN
     };
 
     XChangeProperty(wmDisplay, wmRoot, _NET_SUPPORTED, XA_ATOM, 32, PropModeReplace, (unsigned char*)supported, LENGTH(supported));
