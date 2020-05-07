@@ -14,7 +14,7 @@ void wmExpose(XEvent event);
 void wmConfigureNotify(XEvent event);
 void wmConfigureRequest(XEvent event);
 void wmMapRequest(XEvent event);
-void wmDestroyNotify(XEvent event);
+void wmUnmapNotify(XEvent event);
 void wmClientMessage(XEvent event);
 
 void (*handler[LASTEvent])(XEvent);

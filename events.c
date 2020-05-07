@@ -183,6 +183,24 @@ void wmConfigureRequest(XEvent event) {
     }
 }
 
+void wmUnmapNotify(XEvent event) {
+    XUnmapEvent* e = &event.xunmap;
+    if (e->event == wmRoot) {
+        return;
+    }
+
+    wmWindow* window = wmWindowTowmWindow(e->window);
+    if (window) {
+        Window root, parent;
+        Window* children;
+        unsigned nchildren;
+        if (XQueryTree(wmDisplay, window->frame, &root, &parent, &children, &nchildren) && nchildren) {
+            XReparentWindow(wmDisplay, e->window, wmRoot, 0, 0);
+        }
+        wmFreeWindow(window);
+    }
+}
+
 void wmMapRequest(XEvent event) {
     Window window = event.xmaprequest.window;
 
@@ -195,13 +213,6 @@ void wmMapRequest(XEvent event) {
     if (XGetWindowAttributes(wmDisplay, window, &attr)) {
         wmNewWindow(window, &attr);
         wmShowActiveWorkspace();
-    }
-}
-
-void wmDestroyNotify(XEvent event) {
-    wmWindow* window = wmWindowTowmWindow(event.xdestroywindow.window);
-    if (window) {
-        wmFreeWindow(window);
     }
 }
 
@@ -222,7 +233,7 @@ void (*handler[LASTEvent])(XEvent) = {
         [Expose] = wmExpose,
         [ConfigureNotify] = wmConfigureNotify,
         [ConfigureRequest] = wmConfigureRequest,
+        [UnmapNotify] = wmUnmapNotify,
         [MapRequest] = wmMapRequest,
-        [DestroyNotify] = wmDestroyNotify,
         [ClientMessage] = wmClientMessage,
 };

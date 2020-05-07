@@ -827,6 +827,18 @@ static int errorHandler(Display* d, XErrorEvent* e) {
     else if (e->request_code == X_SetModifierMapping) logmsg("X_SetModifierMapping");
     else if (e->request_code == X_GetModifierMapping) logmsg("X_GetModifierMapping");
     else if (e->request_code == X_NoOperation) logmsg("X_NoOperation");
+
+    if (e->error_code == Success) logmsg("Success");
+    if (e->error_code == BadRequest) logmsg("BadRequest");
+    if (e->error_code == BadValue) logmsg("BadValue");
+    if (e->error_code == BadWindow) logmsg("BadWindow");
+    if (e->error_code == BadPixmap) logmsg("BadPixmap");
+    if (e->error_code == BadAtom) logmsg("BadAtom");
+    if (e->error_code == BadCursor) logmsg("BadCursor");
+    if (e->error_code == BadFont) logmsg("BadFont");
+    if (e->error_code == BadMatch) logmsg("BadMatch");
+    if (e->error_code == BadDrawable) logmsg("BadDrawable");
+    if (e->error_code == BadAccess) logmsg("BadAccess");
 #endif
 
     return 0;
