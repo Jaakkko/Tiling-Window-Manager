@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <X11/Xproto.h>
 #include <X11/cursorfont.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
@@ -705,7 +706,128 @@ static int onWMDetected(Display* d, XErrorEvent* e) {
     return 0;
 }
 static int errorHandler(Display* d, XErrorEvent* e) {
-    logmsg("Error: %x, %i", e->error_code, e->serial);
+#ifdef LOG_ERRORS
+    if (e->request_code == X_CreateWindow) logmsg("X_CreateWindow");
+    else if (e->request_code == X_ChangeWindowAttributes) logmsg("X_ChangeWindowAttributes");
+    else if (e->request_code == X_GetWindowAttributes) logmsg("X_GetWindowAttributes");
+    else if (e->request_code == X_DestroyWindow) logmsg("X_DestroyWindow");
+    else if (e->request_code == X_DestroySubwindows) logmsg("X_DestroySubwindows");
+    else if (e->request_code == X_ChangeSaveSet) logmsg("X_ChangeSaveSet");
+    else if (e->request_code == X_ReparentWindow) logmsg("X_ReparentWindow");
+    else if (e->request_code == X_MapWindow) logmsg("X_MapWindow");
+    else if (e->request_code == X_MapSubwindows) logmsg("X_MapSubwindows");
+    else if (e->request_code == X_UnmapWindow) logmsg("X_UnmapWindow");
+    else if (e->request_code == X_UnmapSubwindows) logmsg("X_UnmapSubwindows");
+    else if (e->request_code == X_ConfigureWindow) logmsg("X_ConfigureWindow");
+    else if (e->request_code == X_CirculateWindow) logmsg("X_CirculateWindow");
+    else if (e->request_code == X_GetGeometry) logmsg("X_GetGeometry");
+    else if (e->request_code == X_QueryTree) logmsg("X_QueryTree");
+    else if (e->request_code == X_InternAtom) logmsg("X_InternAtom");
+    else if (e->request_code == X_GetAtomName) logmsg("X_GetAtomName");
+    else if (e->request_code == X_ChangeProperty) logmsg("X_ChangeProperty");
+    else if (e->request_code == X_DeleteProperty) logmsg("X_DeleteProperty");
+    else if (e->request_code == X_GetProperty) logmsg("X_GetProperty");
+    else if (e->request_code == X_ListProperties) logmsg("X_ListProperties");
+    else if (e->request_code == X_SetSelectionOwner) logmsg("X_SetSelectionOwner");
+    else if (e->request_code == X_GetSelectionOwner) logmsg("X_GetSelectionOwner");
+    else if (e->request_code == X_ConvertSelection) logmsg("X_ConvertSelection");
+    else if (e->request_code == X_SendEvent) logmsg("X_SendEvent");
+    else if (e->request_code == X_GrabPointer) logmsg("X_GrabPointer");
+    else if (e->request_code == X_UngrabPointer) logmsg("X_UngrabPointer");
+    else if (e->request_code == X_GrabButton) logmsg("X_GrabButton");
+    else if (e->request_code == X_UngrabButton) logmsg("X_UngrabButton");
+    else if (e->request_code == X_ChangeActivePointerGrab) logmsg("X_ChangeActivePointerGrab");
+    else if (e->request_code == X_GrabKeyboard) logmsg("X_GrabKeyboard");
+    else if (e->request_code == X_UngrabKeyboard) logmsg("X_UngrabKeyboard");
+    else if (e->request_code == X_GrabKey) logmsg("X_GrabKey");
+    else if (e->request_code == X_UngrabKey) logmsg("X_UngrabKey");
+    else if (e->request_code == X_AllowEvents) logmsg("X_AllowEvents");
+    else if (e->request_code == X_GrabServer) logmsg("X_GrabServer");
+    else if (e->request_code == X_UngrabServer) logmsg("X_UngrabServer");
+    else if (e->request_code == X_QueryPointer) logmsg("X_QueryPointer");
+    else if (e->request_code == X_GetMotionEvents) logmsg("X_GetMotionEvents");
+    else if (e->request_code == X_TranslateCoords) logmsg("X_TranslateCoords");
+    else if (e->request_code == X_WarpPointer) logmsg("X_WarpPointer");
+    else if (e->request_code == X_SetInputFocus) logmsg("X_SetInputFocus");
+    else if (e->request_code == X_GetInputFocus) logmsg("X_GetInputFocus");
+    else if (e->request_code == X_QueryKeymap) logmsg("X_QueryKeymap");
+    else if (e->request_code == X_OpenFont) logmsg("X_OpenFont");
+    else if (e->request_code == X_CloseFont) logmsg("X_CloseFont");
+    else if (e->request_code == X_QueryFont) logmsg("X_QueryFont");
+    else if (e->request_code == X_QueryTextExtents) logmsg("X_QueryTextExtents");
+    else if (e->request_code == X_ListFonts) logmsg("X_ListFonts");
+    else if (e->request_code == X_ListFontsWithInfo) logmsg("X_ListFontsWithInfo");
+    else if (e->request_code == X_SetFontPath) logmsg("X_SetFontPath");
+    else if (e->request_code == X_GetFontPath) logmsg("X_GetFontPath");
+    else if (e->request_code == X_CreatePixmap) logmsg("X_CreatePixmap");
+    else if (e->request_code == X_FreePixmap) logmsg("X_FreePixmap");
+    else if (e->request_code == X_CreateGC) logmsg("X_CreateGC");
+    else if (e->request_code == X_ChangeGC) logmsg("X_ChangeGC");
+    else if (e->request_code == X_CopyGC) logmsg("X_CopyGC");
+    else if (e->request_code == X_SetDashes) logmsg("X_SetDashes");
+    else if (e->request_code == X_SetClipRectangles) logmsg("X_SetClipRectangles");
+    else if (e->request_code == X_FreeGC) logmsg("X_FreeGC");
+    else if (e->request_code == X_ClearArea) logmsg("X_ClearArea");
+    else if (e->request_code == X_CopyArea) logmsg("X_CopyArea");
+    else if (e->request_code == X_CopyPlane) logmsg("X_CopyPlane");
+    else if (e->request_code == X_PolyPoint) logmsg("X_PolyPoint");
+    else if (e->request_code == X_PolyLine) logmsg("X_PolyLine");
+    else if (e->request_code == X_PolySegment) logmsg("X_PolySegment");
+    else if (e->request_code == X_PolyRectangle) logmsg("X_PolyRectangle");
+    else if (e->request_code == X_PolyArc) logmsg("X_PolyArc");
+    else if (e->request_code == X_FillPoly) logmsg("X_FillPoly");
+    else if (e->request_code == X_PolyFillRectangle) logmsg("X_PolyFillRectangle");
+    else if (e->request_code == X_PolyFillArc) logmsg("X_PolyFillArc");
+    else if (e->request_code == X_PutImage) logmsg("X_PutImage");
+    else if (e->request_code == X_GetImage) logmsg("X_GetImage");
+    else if (e->request_code == X_PolyText8) logmsg("X_PolyText8");
+    else if (e->request_code == X_PolyText16) logmsg("X_PolyText16");
+    else if (e->request_code == X_ImageText8) logmsg("X_ImageText8");
+    else if (e->request_code == X_ImageText16) logmsg("X_ImageText16");
+    else if (e->request_code == X_CreateColormap) logmsg("X_CreateColormap");
+    else if (e->request_code == X_FreeColormap) logmsg("X_FreeColormap");
+    else if (e->request_code == X_CopyColormapAndFree) logmsg("X_CopyColormapAndFree");
+    else if (e->request_code == X_InstallColormap) logmsg("X_InstallColormap");
+    else if (e->request_code == X_UninstallColormap) logmsg("X_UninstallColormap");
+    else if (e->request_code == X_ListInstalledColormaps) logmsg("X_ListInstalledColormaps");
+    else if (e->request_code == X_AllocColor) logmsg("X_AllocColor");
+    else if (e->request_code == X_AllocNamedColor) logmsg("X_AllocNamedColor");
+    else if (e->request_code == X_AllocColorCells) logmsg("X_AllocColorCells");
+    else if (e->request_code == X_AllocColorPlanes) logmsg("X_AllocColorPlanes");
+    else if (e->request_code == X_FreeColors) logmsg("X_FreeColors");
+    else if (e->request_code == X_StoreColors) logmsg("X_StoreColors");
+    else if (e->request_code == X_StoreNamedColor) logmsg("X_StoreNamedColor");
+    else if (e->request_code == X_QueryColors) logmsg("X_QueryColors");
+    else if (e->request_code == X_LookupColor) logmsg("X_LookupColor");
+    else if (e->request_code == X_CreateCursor) logmsg("X_CreateCursor");
+    else if (e->request_code == X_CreateGlyphCursor) logmsg("X_CreateGlyphCursor");
+    else if (e->request_code == X_FreeCursor) logmsg("X_FreeCursor");
+    else if (e->request_code == X_RecolorCursor) logmsg("X_RecolorCursor");
+    else if (e->request_code == X_QueryBestSize) logmsg("X_QueryBestSize");
+    else if (e->request_code == X_QueryExtension) logmsg("X_QueryExtension");
+    else if (e->request_code == X_ListExtensions) logmsg("X_ListExtensions");
+    else if (e->request_code == X_ChangeKeyboardMapping) logmsg("X_ChangeKeyboardMapping");
+    else if (e->request_code == X_GetKeyboardMapping) logmsg("X_GetKeyboardMapping");
+    else if (e->request_code == X_ChangeKeyboardControl) logmsg("X_ChangeKeyboardControl");
+    else if (e->request_code == X_GetKeyboardControl) logmsg("X_GetKeyboardControl");
+    else if (e->request_code == X_Bell) logmsg("X_Bell");
+    else if (e->request_code == X_ChangePointerControl) logmsg("X_ChangePointerControl");
+    else if (e->request_code == X_GetPointerControl) logmsg("X_GetPointerControl");
+    else if (e->request_code == X_SetScreenSaver) logmsg("X_SetScreenSaver");
+    else if (e->request_code == X_GetScreenSaver) logmsg("X_GetScreenSaver");
+    else if (e->request_code == X_ChangeHosts) logmsg("X_ChangeHosts");
+    else if (e->request_code == X_ListHosts) logmsg("X_ListHosts");
+    else if (e->request_code == X_SetAccessControl) logmsg("X_SetAccessControl");
+    else if (e->request_code == X_SetCloseDownMode) logmsg("X_SetCloseDownMode");
+    else if (e->request_code == X_KillClient) logmsg("X_KillClient");
+    else if (e->request_code == X_RotateProperties) logmsg("X_RotateProperties");
+    else if (e->request_code == X_ForceScreenSaver) logmsg("X_ForceScreenSaver");
+    else if (e->request_code == X_SetPointerMapping) logmsg("X_SetPointerMapping");
+    else if (e->request_code == X_GetPointerMapping) logmsg("X_GetPointerMapping");
+    else if (e->request_code == X_SetModifierMapping) logmsg("X_SetModifierMapping");
+    else if (e->request_code == X_GetModifierMapping) logmsg("X_GetModifierMapping");
+    else if (e->request_code == X_NoOperation) logmsg("X_NoOperation");
+#endif
 
     return 0;
 }

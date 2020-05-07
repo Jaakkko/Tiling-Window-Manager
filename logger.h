@@ -5,6 +5,8 @@
 #ifndef WM_LOGGER_H
 #define WM_LOGGER_H
 
+#define LOG_ERRORS
+
 void logmsg(const char* text, ...);
 
 #endif //WM_LOGGER_H
