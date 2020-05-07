@@ -11,6 +11,7 @@ unsigned wmBarHeight;
 
 void wmCreateBar();
 void wmUpdateBar();
+void wmExposeBar();
 void wmDestroyBar();
 
 #endif //WM_BAR_H

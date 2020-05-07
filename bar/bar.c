@@ -200,6 +200,15 @@ void wmUpdateBar() {
     drawBlocks();
 }
 
+void wmExposeBar() {
+    pthread_mutex_lock(&blocksLock);
+    for (int i = 0; i < LENGTH(blocks); i++) {
+        wmBlock* block = &blocks[i];
+        block->dirty = 1;
+    }
+    pthread_mutex_unlock(&blocksLock);
+}
+
 void wmDestroyBar() {
     XftColorFree(wmDisplay, wmVisual, wmColormap, &textUnselectedColor);
     XftColorFree(wmDisplay, wmVisual, wmColormap, &textSelectedColor);

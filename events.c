@@ -141,7 +141,12 @@ void wmEnterNotify(XEvent event) {
 }
 
 void wmExpose(XEvent event) {
-    if (event.xexpose.window == wmBarWindow) {
+    XExposeEvent* e = &event.xexpose;
+    if (e->window == wmBarWindow) {
+        if (e->x == 0 && e->y == 0 && e->width == wmScreenWidth && e->height == wmBarHeight) {
+            wmExposeBar();
+        }
+
         wmUpdateBar();
     }
 }
