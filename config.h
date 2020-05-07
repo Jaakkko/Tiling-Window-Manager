@@ -20,8 +20,8 @@ static const unsigned minHeight    = 200;
 
 //                                          AARRGGBB
 static const unsigned borderColorSplit          = 0xff50fa78;
-static const unsigned borderColorActive         = 0xfff7eb60;
-static const unsigned borderColor               = 0x801d5b82;
+static const unsigned borderColorActive         = 0xffe5e5e5;
+static const unsigned borderColor               = 0x00000000;
 static const unsigned borderWidth               = 2;
 static const unsigned gap                       = 4; // 1 = 2px
 #define smartGaps
@@ -63,6 +63,8 @@ static const char* startupScriptBath = "~/.config/wm/startup.sh";
 
 static const char* rofi[] = { "rofi", "-show", "run", NULL };
 static const char* alacritty[] = { "alacritty", NULL };
+static const char* chromium[] = { "chromium", "--force-dark-mode", NULL };
+static const char* suspend[] = { "systemctl", "suspend", NULL };
 
 static const KeyBinding keyBindings[] = {
         // Modifier                    Key          Function                Argument
@@ -73,6 +75,8 @@ static const KeyBinding keyBindings[] = {
         { MOD,                XK_K,        focus,                     { .i = -1              } },
         { MOD,                XK_D,        openApplication,           { .v = rofi            } },
         { MOD,                XK_Return,   openApplication,           { .v = alacritty       } },
+        { MOD,                XK_F1,       openApplication,           { .v = chromium        } },
+        { MOD,                XK_F12,      openApplication,           { .v = suspend,        } },
         { MOD,                XK_Z,        clearSplitHints,           {                      } },
         { MOD,                XK_X,        raiseSplit,                { .i = NONE            } },
         { MOD,                XK_C,        raiseSplit,                { .i = HORIZONTAL      } },
