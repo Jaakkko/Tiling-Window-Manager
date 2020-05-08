@@ -535,14 +535,14 @@ static void unsetFloatingWindow(wmWindow* window) {
 
 static void hideFullscreenWindow(wmWorkspace* workspace) {
     long data[2] = { None, None };
-    XUnmapWindow(wmDisplay, workspace->fullscreen->window);
+    XUnmapWindow(wmDisplay, workspace->fullscreen->frame);
     data[0] = IconicState;
     addAtom(workspace->fullscreen->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, _NET_WM_STATE_SUPPORTED_COUNT);
     XChangeProperty(wmDisplay, workspace->fullscreen->window, WM_STATE, WM_STATE, 32, PropModeReplace, (unsigned char*)data, 2);
 }
 static void showFullscreenWindow(wmWorkspace* workspace) {
     long data[2] = { None, None };
-    XMapWindow(wmDisplay, workspace->fullscreen->window);
+    XMapWindow(wmDisplay, workspace->fullscreen->frame);
     data[0] = NormalState;
     Atom newAtoms[_NET_WM_STATE_SUPPORTED_COUNT];
     removeAtom(workspace->fullscreen->window, _NET_WM_STATE, _NET_WM_STATE_HIDDEN, _NET_WM_STATE_SUPPORTED_COUNT, newAtoms);
@@ -551,8 +551,6 @@ static void showFullscreenWindow(wmWorkspace* workspace) {
 static void unsetFullscreen(wmWindow* window) {
     Atom newAtoms[_NET_WM_STATE_SUPPORTED_COUNT];
     removeAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_SUPPORTED_COUNT, newAtoms);
-    XReparentWindow(wmDisplay, window->window, window->frame, 0, 0);
-    XMapWindow(wmDisplay, window->window);
     for (int j = 0; j < WORKSPACE_COUNT; j++) {
         wmWorkspace* workspace = &wmWorkspaces[j];
         if (workspace->fullscreen == window) {
@@ -563,8 +561,6 @@ static void unsetFullscreen(wmWindow* window) {
 }
 static void setFullscreen(wmWindow* window) {
     addAtom(window->window, _NET_WM_STATE, _NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_SUPPORTED_COUNT);
-    XUnmapWindow(wmDisplay, window->frame);
-    XReparentWindow(wmDisplay, window->window, wmRoot, 0, 0);
     for (int j = 0; j < WORKSPACE_COUNT; j++) {
         if (window->workspaces & (1 << j)) {
             wmWorkspace* workspace = &wmWorkspaces[j];
@@ -615,12 +611,14 @@ static void stateHandler(XClientMessageEvent* event) {
             if (enable) {
                 if (!window->fullscreen) {
                     setFullscreen(window);
+                    wmUpdateBorders();
                     wmShowActiveWorkspace();
                 }
             }
             else if (window->fullscreen) {
                 wmSkipNextEnterNotify = 1;
                 unsetFullscreen(window);
+                wmUpdateBorders();
                 wmShowActiveWorkspace();
             }
         }
@@ -1311,6 +1309,7 @@ void wmShowActiveWorkspace() {
     wmWindow* activeWindow = workspace->activeWindow;
     if (workspace->fullscreen) {
         XUnmapWindow(wmDisplay, wmBarWindow);
+        XMoveResizeWindow(wmDisplay, workspace->fullscreen->frame, 0, 0, wmScreenWidth, wmScreenHeight);
         XMoveResizeWindow(wmDisplay, workspace->fullscreen->window, 0, 0, wmScreenWidth, wmScreenHeight);
         for (wmWindow* window = wmHead; window; window = window->next) {
             if (!window->fullscreen) {
@@ -1477,6 +1476,11 @@ static void updateBorders(wmNode* node, int belowSplit) {
 }
 void wmUpdateBorders() {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    if (workspace->fullscreen) {
+        XSetWindowBorderWidth(wmDisplay, workspace->fullscreen->frame, 0);
+        return;
+    }
+
     for (wmFloatingWindow* d = wmFloatingWindows; d; d = d->next) {
         XSetWindowBorder(
                 wmDisplay,
