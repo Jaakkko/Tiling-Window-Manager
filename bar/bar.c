@@ -185,7 +185,8 @@ void wmCreateBar() {
         longest = MAX(maxlen, longest);
         block->bufferLength = maxlen + 1;
         block->text = malloc(block->bufferLength);
-        block->lenBytes = block->source(block->text, block->bufferLength);
+        block->text[0] = '\0';
+        block->lenBytes = 0;
         block->width = blockPadding + textWidth(block->longest, maxlen);
         block->dirty = 1;
     }
