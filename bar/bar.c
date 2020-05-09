@@ -225,17 +225,15 @@ void wmUpdateBarBounds() {
 }
 
 void wmDestroyBar() {
+    running = 0;
+    pthread_join(blocksThread, NULL);
+
     XftColorFree(wmDisplay, wmVisual, wmColormap, &textUnselectedColor);
     XftColorFree(wmDisplay, wmVisual, wmColormap, &textSelectedColor);
     XftDrawDestroy(draw);
     XftFontClose(wmDisplay, font);
     XFreeGC(wmDisplay, gc);
     XDestroyWindow(wmDisplay, wmBarWindow);
-
-    pthread_mutex_lock(&blocksLock);
-    running = 0;
-    pthread_mutex_unlock(&blocksLock);
-    pthread_join(blocksThread, NULL);
 
     int i;
     wmBlock* block;
