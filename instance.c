@@ -1113,6 +1113,11 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
 }
 
 void wmFocusWindow(wmWindow* window) {
+    unsigned workspaces = (window->floating && window->floating->flags & FLOATING_STICKY) ? ~0 : window->workspaces;
+    if ((workspaces & 1 << wmActiveWorkspace) == 0) {
+        return;
+    }
+
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     setActiveWindow(workspace, window);
     workspace->showSplitBorder = 0;
@@ -1209,6 +1214,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
         setFloatingWindow(new_wmWindow, attributes);
         if (dialog) new_wmWindow->floating->flags |= FLOATING_DIALOG;
         if (sticky) new_wmWindow->floating->flags |= FLOATING_STICKY;
+        XRaiseWindow(wmDisplay, frame);
     }
 
     addWindowToLayout(workspace, new_wmWindow);
@@ -1305,8 +1311,7 @@ void wmShowActiveWorkspace() {
         int mask = 1 << wmActiveWorkspace;
         for (wmWindow* window = wmHead; window; window = window->next) {
             long data[2] = { None, None };
-            if (window->floating && window->floating->flags | FLOATING_STICKY) {
-                XRaiseWindow(wmDisplay, window->frame);
+            if (window->floating && window->floating->flags & FLOATING_STICKY) {
                 XMapWindow(wmDisplay, window->frame);
                 data[0] = NormalState;
                 Atom newAtoms[_NET_WM_STATE_SUPPORTED_COUNT - 1];

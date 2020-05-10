@@ -168,7 +168,6 @@ void wmCreateBar() {
     );
     XSelectInput(wmDisplay, wmBarWindow, ExposureMask);
     XMapWindow(wmDisplay, wmBarWindow);
-    XRaiseWindow(wmDisplay, wmBarWindow);
 
     generate_color(barForegroundSelected, &textSelectedColor);
     generate_color(barForegroundUnselected, &textUnselectedColor);
