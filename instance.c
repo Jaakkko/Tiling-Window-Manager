@@ -21,7 +21,6 @@
 #include <X11/Xatom.h>
 #include <X11/extensions/Xrender.h>
 
-int wmSkipNextEnterNotify = 0;
 int wmMouseX;
 int wmMouseY;
 
@@ -437,28 +436,10 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         height -= 2 * (gap + borderWidth);
         width -= 2 * (gap + borderWidth);
 
-        int left = node->x;
-        int right = node->x + node->width;
-        int top = node->y;
-        int bottom = node->y + node->height;
-        int pointerWasInNode = 0;
-        if (wmMouseX >= left && wmMouseX <= right && wmMouseY >= top && wmMouseY <= bottom) {
-            pointerWasInNode = 1;
-        }
-
         node->x = x;
         node->y = y;
         node->width = width;
         node->height = height;
-
-        left = node->x;
-        right = node->x + node->width;
-        top = node->y;
-        bottom = node->y + node->height;
-        int pointerInNode = wmMouseX >= left && wmMouseX <= right && wmMouseY >= top && wmMouseY <= bottom;
-        if (pointerWasInNode && !pointerInNode) {
-            wmSkipNextEnterNotify = 1;
-        }
 
         XWindowChanges wc;
         wc.x = 0;
@@ -616,7 +597,6 @@ static void stateHandler(XClientMessageEvent* event) {
                 }
             }
             else if (window->fullscreen) {
-                wmSkipNextEnterNotify = 1;
                 unsetFullscreen(window);
                 wmUpdateBorders();
                 wmShowActiveWorkspace();
@@ -1283,7 +1263,6 @@ void wmSelectWorkspace(unsigned workspaceIndex) {
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     if (workspace->fullscreen) {
         hideFullscreenWindow(workspace);
-        wmSkipNextEnterNotify = 1;
     }
 
     wmActiveWorkspace = workspaceIndex;

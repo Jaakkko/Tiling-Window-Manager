@@ -126,8 +126,10 @@ void wmButtonPress(XEvent event) {
 }
 
 void wmEnterNotify(XEvent event) {
-    if (wmSkipNextEnterNotify) {
-        wmSkipNextEnterNotify = 0;
+    int lastMouseX = wmMouseX;
+    int lastMouseY = wmMouseY;
+    wmUpdateMouseCoords();
+    if (lastMouseX == wmMouseX && lastMouseY == wmMouseY) {
         return;
     }
 
