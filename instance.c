@@ -1207,8 +1207,23 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     new_wmWindow->workspaces = 1 << wmActiveWorkspace;
     attachWindow(new_wmWindow);
 
+    int maxw, maxh;
+    int minw, minh;
+    XSizeHints hints;
+    long l;
+    if (XGetWMNormalHints(wmDisplay, window, &hints, &l)) {
+        if (hints.flags & PMaxSize) {
+            maxw = hints.max_width;
+            maxh = hints.max_height;
+        }
+        if (hints.flags & PMinSize) {
+            minw = hints.min_width;
+            minh = hints.min_height;
+        }
+    }
+
     Window parent;
-    int dialog = XGetTransientForHint(wmDisplay, window, &parent);
+    int dialog = (hints.flags & (PMaxSize | PMinSize) && maxw == minw && maxh == minh) || XGetTransientForHint(wmDisplay, window, &parent);
     int sticky = containsAtomValue(window, _NET_WM_STATE, _NET_WM_STATE_STICKY, _NET_WM_STATE_SUPPORTED_COUNT);
     if (dialog || sticky) {
         setFloatingWindow(new_wmWindow, attributes);
