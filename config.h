@@ -30,9 +30,9 @@ static const unsigned gap                       = 4; // 1 = 2px
 static const char* barFont                      = "Roboto:style=Regular:size=12:antialias=true";
 static const unsigned barPadding                = 4;
 static const unsigned barBackground             = 0xDB000000;
-static const unsigned barBackgroundSelected     = 0xFFdba716;
+static const unsigned barBackgroundSelected     = 0xFFc7c99b;
 static const unsigned barBackgroundUnselected   = 0xFF000000;
-static const unsigned barForegroundSelected     = 0xFF000000;
+static const unsigned barForegroundSelected     = 0xFF14213D;
 static const unsigned barForegroundUnselected   = 0xFFBFD4E1;
 #define bottomBar
 
