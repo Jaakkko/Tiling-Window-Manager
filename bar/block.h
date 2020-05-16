@@ -21,5 +21,6 @@ unsigned disk(char*, unsigned);
 unsigned temperature(char*, unsigned);
 unsigned cpu(char*, unsigned);
 unsigned ram(char*, unsigned);
+unsigned battery(char*, unsigned);
 
 #endif //WM_BLOCK_H

@@ -44,3 +44,7 @@ unsigned cpu(char* buffer, unsigned bufferLength) {
 unsigned ram(char* buffer, unsigned bufferLength) {
     return runcmd(buffer, bufferLength, "export POSIXLY_CORRECT=1; awk '/^MemTotal:/{mt=$2}/^MemAvailable:/{ma=$2}END{used=(mt-ma)/1048576;printf(\"%.1f G\",used)}' /proc/meminfo");
 }
+
+unsigned battery(char* buffer, unsigned bufferLength) {
+    return runcmd(buffer, bufferLength, "acpi -b 2>/dev/null | awk '{printf substr($4,1,length($4)-1)}'");
+}

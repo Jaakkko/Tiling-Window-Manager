@@ -27,7 +27,7 @@ static const unsigned gap                       = 4; // 1 = 2px
 #define smartGaps
 
 // Bar
-static const char* barFont                      = "Roboto:style=Regular:size=11:antialias=true";
+static const char* barFont                      = "Roboto:style=Regular:size=12:antialias=true";
 static const unsigned barPadding                = 4;
 static const unsigned barBackground             = 0xDB000000;
 static const unsigned barBackgroundSelected     = 0xFFdba716;
@@ -49,6 +49,7 @@ static wmBlock blocks[] = {
         { temperature,  "99,5 °C"          },
         { cpu,          "99,99 %"          },
         { ram,          "34,4 G"           },
+        { battery,      "100%"             },
 };
 
 #define MOD Mod4Mask
