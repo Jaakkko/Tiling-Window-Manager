@@ -26,19 +26,58 @@ int wmMouseY;
 
 unsigned wmActiveWorkspace = 0;
 
-wmFloatingWindow* wmFloatingWindows = NULL;
-
-wmWindow* wmHead = NULL;
-wmWindow* wmTail = NULL;
-
-wmSplitMode wmSplitOrientation = NONE;
-
 wmWorkspace wmWorkspaces[WORKSPACE_COUNT];
 
 int wmRunning = True;
 int wmExitCode = 0;
 
+Cursor wmCursors[CURSOR_LAST];
+
+Display* wmDisplay;
+Window wmRoot;
+int wmDepth;
+Visual* wmVisual;
+Colormap wmColormap;
+int wmScreenWidth;
+int wmScreenHeight;
+int wmWindowAreaX;
+int wmWindowAreaY;
+int wmWindowAreaWidth;
+int wmWindowAreaHeight;
+
+static wmFloatingWindow* wmFloatingWindows = NULL;
+
+static wmWindow* wmHead = NULL;
+static wmWindow* wmTail = NULL;
+
+static wmSplitMode wmSplitOrientation = NONE;
+
 static Window wmcheckwin;
+
+static Atom
+        WM_PROTOCOLS,
+        WM_DELETE_WINDOW,
+        WM_STATE,
+        WM_TAKE_FOCUS,
+        UTF8_STRING,
+        _NET_SUPPORTED,
+        _NET_CLIENT_LIST,
+        _NET_NUMBER_OF_DESKTOPS,
+        _NET_DESKTOP_GEOMETRY,
+        _NET_DESKTOP_VIEWPORT,
+        _NET_CURRENT_DESKTOP,
+        _NET_DESKTOP_NAMES,
+        _NET_ACTIVE_WINDOW,
+        _NET_SUPPORTING_WM_CHECK,
+        _NET_REQUEST_FRAME_EXTENTS,
+        _NET_FRAME_EXTENTS,
+        _NET_WM_NAME,
+        _NET_WM_STATE,
+        _NET_WM_STATE_STICKY,
+        _NET_WM_STATE_HIDDEN,
+        _NET_WM_STATE_FULLSCREEN,
+        _NET_WM_ALLOWED_ACTIONS,
+        _NET_WM_ACTION_FULLSCREEN;
 
 static int getAction(Window window, long* data, Atom atom) {
     int add;

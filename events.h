@@ -17,6 +17,6 @@ void wmMapRequest(XEvent event);
 void wmUnmapNotify(XEvent event);
 void wmClientMessage(XEvent event);
 
-void (*handler[LASTEvent])(XEvent);
+extern void (*handler[LASTEvent])(XEvent);
 
 #endif //WM_EVENTS_H

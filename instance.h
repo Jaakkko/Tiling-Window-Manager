@@ -10,39 +10,28 @@
 
 #include "types.h"
 
-int wmMouseX;
-int wmMouseY;
+extern int wmMouseX;
+extern int wmMouseY;
 
-unsigned wmActiveWorkspace;
-
-wmFloatingWindow* wmFloatingWindows;
-
-wmWindow* wmHead;
-wmWindow* wmTail;
+extern unsigned wmActiveWorkspace;
 
 typedef enum { RIGHT, LEFT } wmHorizontalDirection;
 typedef enum { DOWN, UP } wmVerticalDirection;
 
-wmSplitMode wmSplitOrientation;
-
 extern wmWorkspace wmWorkspaces[];
 
-int wmRunning;
-int wmExitCode;
+extern int wmRunning;
+extern int wmExitCode;
 
-Cursor wmCursors[CURSOR_LAST];
+extern Cursor wmCursors[];
 
-Display* wmDisplay;
-Window wmRoot;
-int wmDepth;
-Visual* wmVisual;
-Colormap wmColormap;
-int wmScreenWidth;
-int wmScreenHeight;
-int wmWindowAreaX;
-int wmWindowAreaY;
-int wmWindowAreaWidth;
-int wmWindowAreaHeight;
+extern Display* wmDisplay;
+extern Window wmRoot;
+extern int wmDepth;
+extern Visual* wmVisual;
+extern Colormap wmColormap;
+extern int wmScreenWidth;
+extern int wmScreenHeight;
 
 #define _NET_WM_STATE_SUPPORTED_COUNT 3
 
@@ -50,36 +39,11 @@ int wmWindowAreaHeight;
 #define _NET_WM_STATE_ADD           1    /* add/set property */
 #define _NET_WM_STATE_TOGGLE        2    /* toggle property  */
 
-Atom
-    WM_PROTOCOLS,
-    WM_DELETE_WINDOW,
-    WM_STATE,
-    WM_TAKE_FOCUS,
-    UTF8_STRING,
-    _NET_SUPPORTED,
-    _NET_CLIENT_LIST,
-    _NET_NUMBER_OF_DESKTOPS,
-    _NET_DESKTOP_GEOMETRY,
-    _NET_DESKTOP_VIEWPORT,
-    _NET_CURRENT_DESKTOP,
-    _NET_DESKTOP_NAMES,
-    _NET_ACTIVE_WINDOW,
-    _NET_SUPPORTING_WM_CHECK,
-    _NET_REQUEST_FRAME_EXTENTS,
-    _NET_FRAME_EXTENTS,
-    _NET_WM_NAME,
-    _NET_WM_STATE,
-    _NET_WM_STATE_STICKY,
-    _NET_WM_STATE_HIDDEN,
-    _NET_WM_STATE_FULLSCREEN,
-    _NET_WM_ALLOWED_ACTIONS,
-    _NET_WM_ACTION_FULLSCREEN;
-
 typedef struct {
     Atom* atom;
     void (*handler)(XClientMessageEvent*);
 } ClientMessageHandler;
-const unsigned clientMessageHandlersCount;
+extern const unsigned clientMessageHandlersCount;
 extern ClientMessageHandler clientMessageHandler[];
 
 int wmInitialize();

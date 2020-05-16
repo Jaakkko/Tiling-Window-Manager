@@ -16,6 +16,10 @@
 #include "../logger.h"
 #include "../util.h"
 
+Window wmBarWindow;
+
+unsigned wmBarHeight;
+
 static XftFont* font;
 static XftColor textUnselectedColor;
 static XftColor textSelectedColor;

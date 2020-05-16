@@ -5,9 +5,9 @@
 #ifndef WM_BAR_H
 #define WM_BAR_H
 
-Window wmBarWindow;
+extern Window wmBarWindow;
 
-unsigned wmBarHeight;
+extern unsigned wmBarHeight;
 
 void wmCreateBar();
 void wmUpdateBar();
