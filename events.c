@@ -126,9 +126,16 @@ void wmButtonPress(XEvent event) {
 }
 
 void wmEnterNotify(XEvent event) {
+    if (skipNextEnterNotify) {
+        skipNextEnterNotify = 0;
+        return;
+    }
+
+    XCrossingEvent* e = &event.xcrossing;
     int lastMouseX = wmMouseX;
     int lastMouseY = wmMouseY;
-    wmUpdateMouseCoords();
+    wmMouseX = e->x_root;
+    wmMouseY = e->y_root;
     if (lastMouseX == wmMouseX && lastMouseY == wmMouseY) {
         return;
     }
@@ -188,6 +195,7 @@ void wmConfigureRequest(XEvent event) {
 void wmUnmapNotify(XEvent event) {
     XUnmapEvent* e = &event.xunmap;
     if (e->event == wmRoot) {
+        skipNextEnterNotify = 1;
         return;
     }
 

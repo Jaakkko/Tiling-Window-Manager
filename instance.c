@@ -45,6 +45,8 @@ int wmWindowAreaY;
 int wmWindowAreaWidth;
 int wmWindowAreaHeight;
 
+int skipNextEnterNotify = 0;
+
 static wmFloatingWindow* wmFloatingWindows = NULL;
 
 static wmWindow* wmHead = NULL;
