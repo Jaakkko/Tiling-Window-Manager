@@ -35,6 +35,7 @@ extern int wmScreenHeight;
 
 extern int skipNextEnterNotify;
 
+#define _NET_WM_WINDOW_TYPE_SUPPORTED_COUNT 1
 #define _NET_WM_STATE_SUPPORTED_COUNT 3
 
 #define _NET_WM_STATE_REMOVE        0    /* remove/unset property */

@@ -74,6 +74,8 @@ static Atom
         _NET_REQUEST_FRAME_EXTENTS,
         _NET_FRAME_EXTENTS,
         _NET_WM_NAME,
+        _NET_WM_WINDOW_TYPE,
+        _NET_WM_WINDOW_TYPE_DIALOG,
         _NET_WM_STATE,
         _NET_WM_STATE_STICKY,
         _NET_WM_STATE_HIDDEN,
@@ -880,6 +882,8 @@ static void initAtoms() {
     _NET_REQUEST_FRAME_EXTENTS      = XInternAtom(wmDisplay, "_NET_REQUEST_FRAME_EXTENTS", False);
     _NET_FRAME_EXTENTS              = XInternAtom(wmDisplay, "_NET_FRAME_EXTENTS", False);
     _NET_WM_NAME                    = XInternAtom(wmDisplay, "_NET_WM_NAME", False);
+    _NET_WM_WINDOW_TYPE             = XInternAtom(wmDisplay, "_NET_WM_WINDOW_TYPE", False);
+    _NET_WM_WINDOW_TYPE_DIALOG      = XInternAtom(wmDisplay, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     _NET_WM_STATE                   = XInternAtom(wmDisplay, "_NET_WM_STATE", False);
     _NET_WM_STATE_STICKY            = XInternAtom(wmDisplay, "_NET_WM_STATE_STICKY", False);
     _NET_WM_STATE_HIDDEN            = XInternAtom(wmDisplay, "_NET_WM_STATE_HIDDEN", False);
@@ -900,6 +904,8 @@ static void initAtoms() {
             _NET_REQUEST_FRAME_EXTENTS,
             _NET_FRAME_EXTENTS,
             _NET_WM_NAME,
+            _NET_WM_WINDOW_TYPE,
+            _NET_WM_WINDOW_TYPE_DIALOG,
             _NET_WM_STATE,
             _NET_WM_STATE_STICKY,
             _NET_WM_STATE_HIDDEN,
@@ -1264,7 +1270,10 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     }
 
     Window parent;
-    int dialog = (hints.flags & (PMaxSize | PMinSize) && maxw == minw && maxh == minh) || XGetTransientForHint(wmDisplay, window, &parent);
+    int dialog =
+            (hints.flags & (PMaxSize | PMinSize) && maxw == minw && maxh == minh) ||
+            XGetTransientForHint(wmDisplay, window, &parent) ||
+            containsAtomValue(window, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DIALOG, _NET_WM_WINDOW_TYPE_SUPPORTED_COUNT);
     int sticky = containsAtomValue(window, _NET_WM_STATE, _NET_WM_STATE_STICKY, _NET_WM_STATE_SUPPORTED_COUNT);
     if (dialog || sticky) {
         setFloatingWindow(new_wmWindow, attributes);
