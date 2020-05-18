@@ -6,6 +6,7 @@
 #include "config.h"
 #include "input.h"
 #include "util.h"
+#include "tree.h"
 #include "bar/bar.h"
 
 void wmKeyPress(XEvent event) {
@@ -195,7 +196,18 @@ void wmConfigureRequest(XEvent event) {
 void wmUnmapNotify(XEvent event) {
     XUnmapEvent* e = &event.xunmap;
     if (e->event == wmRoot) {
-        skipNextEnterNotify = 1;
+        wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+        if (!workspace->layout) {
+            return;
+        }
+
+        wmNode* node = findNode(workspace->layout, workspace->activeWindow);
+        wmUpdateMouseCoords();
+        int left = node->x;
+        int right = node->x + node->width;
+        int top = node->y;
+        int bottom = node->y + node->height;
+        skipNextEnterNotify = !(wmMouseX >= left && wmMouseX <= right && wmMouseY >= top && wmMouseY <= bottom);
         return;
     }
 
