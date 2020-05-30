@@ -200,6 +200,9 @@ void wmUnmapNotify(XEvent event) {
         if (!workspace->layout) {
             return;
         }
+        if (workspace->activeWindow->floating) {
+            return;
+        }
 
         wmNode* node = findNode(workspace->layout, workspace->activeWindow);
         wmUpdateMouseCoords();
