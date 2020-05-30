@@ -1103,6 +1103,9 @@ void wmMoveActiveWindow(unsigned workspace) {
             source->showSplitBorder = 0;
             destination->showSplitBorder = 0;
 
+            source->countWindows--;
+            destination->countWindows++;
+
             removeWindowFromLayout(source, source->activeWindow);
             addWindowToLayout(destination, source->activeWindow);
 
@@ -1134,6 +1137,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
                 workspace->fullscreen = activeWindow;
             }
 
+            workspace->countWindows++;
             addWindowToLayout(workspace, activeWindow);
             workspace->activeWindow = activeWindow;
         }
@@ -1145,6 +1149,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
                 workspace->fullscreen = NULL;
             }
 
+            workspace->countWindows--;
             removeWindowFromLayout(workspace, activeWindow);
             setActiveWindow(workspace, wmNextVisibleWindow(workspaceIndex));
         }
@@ -1215,6 +1220,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     XAddToSaveSet(wmDisplay, window);
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    workspace->countWindows++;
 
     XSetWindowAttributes frameAttr;
     frameAttr.colormap = wmColormap;
@@ -1301,6 +1307,7 @@ void wmFreeWindow(wmWindow* window) {
         unsigned mask = 1 << i;
         if (window->workspaces & mask) {
             wmWorkspace* workspace = &wmWorkspaces[i];
+            workspace->countWindows--;
             wmWindow* activeWindow = workspace->activeWindow;
             if (activeWindow == window) {
                 setActiveWindow(workspace, wmNextVisibleWindow(i));

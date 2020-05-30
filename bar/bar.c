@@ -96,7 +96,7 @@ static void drawWorkspaces() {
     int x = 0;
     for (int i = 0; i < WORKSPACE_COUNT; i++) {
         const int selected = i == wmActiveWorkspace;
-        if (!selected && !wmWorkspaces[i].layout) {
+        if (!selected && wmWorkspaces[i].countWindows == 0) {
             continue;
         }
 
