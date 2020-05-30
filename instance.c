@@ -1283,6 +1283,9 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
         if (sticky) new_wmWindow->floating->flags |= FLOATING_STICKY;
         XRaiseWindow(wmDisplay, frame);
     }
+    else {
+        XLowerWindow(wmDisplay, frame);
+    }
 
     addWindowToLayout(workspace, new_wmWindow);
     setActiveWindow(workspace, new_wmWindow);
