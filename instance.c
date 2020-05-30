@@ -1091,26 +1091,26 @@ void wmMoveActiveWindow(unsigned workspace) {
                 if (destination->fullscreen && destination->fullscreen != source->fullscreen) {
                     unsetFullscreen(destination->fullscreen);
                 }
-                for (int i = 0; i < WORKSPACE_COUNT; i++) {
-                    wmWorkspace* ws = &wmWorkspaces[i];
-                    if (ws->fullscreen == source->fullscreen) {
-                        ws->fullscreen = NULL;
-                    }
-                }
                 destination->fullscreen = source->activeWindow;
+                source->fullscreen = NULL;
             }
 
+            unsigned* workspaces = &source->activeWindow->workspaces;
+
             source->showSplitBorder = 0;
-            destination->showSplitBorder = 0;
-
             source->countWindows--;
-            destination->countWindows++;
-
             removeWindowFromLayout(source, source->activeWindow);
-            addWindowToLayout(destination, source->activeWindow);
+            *workspaces ^= 1U << wmActiveWorkspace;
 
-            destination->activeWindow = source->activeWindow;
-            destination->activeWindow->workspaces = 1U << workspace;
+            if (!(*workspaces & (1U << workspace))) {
+                destination->showSplitBorder = 0;
+                destination->countWindows++;
+                addWindowToLayout(destination, source->activeWindow);
+                *workspaces |= 1U << workspace;
+
+                destination->activeWindow = source->activeWindow;
+            }
+
             setActiveWindow(source, wmNextVisibleWindow(wmActiveWorkspace));
             updateWorkspaceAtoms();
             wmUpdateBorders();
