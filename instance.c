@@ -1167,10 +1167,12 @@ void wmFocusWindow(wmWindow* window) {
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     setActiveWindow(workspace, window);
-    workspace->showSplitBorder = 0;
-    wmNode* split = findNode(workspace->layout, workspace->activeWindow);
-    if (split) {
-        workspace->splitNode = split;
+    if (workspace->layout) {
+        workspace->showSplitBorder = 0;
+        wmNode* split = findNode(workspace->layout, workspace->activeWindow);
+        if (split) {
+            workspace->splitNode = split;
+        }
     }
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
     wmUpdateBorders();
