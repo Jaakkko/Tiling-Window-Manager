@@ -15,6 +15,7 @@ typedef struct {
     wmNode* splitNode;
     unsigned showSplitBorder;
     wmWindow* fullscreen;
+    unsigned countWindows;
 } wmWorkspace;
 
 #define FLOATING_DIALOG 1 << 1

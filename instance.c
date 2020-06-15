@@ -45,6 +45,8 @@ int wmWindowAreaY;
 int wmWindowAreaWidth;
 int wmWindowAreaHeight;
 
+int skipNextEnterNotify = 0;
+
 static wmFloatingWindow* wmFloatingWindows = NULL;
 
 static wmWindow* wmHead = NULL;
@@ -72,6 +74,8 @@ static Atom
         _NET_REQUEST_FRAME_EXTENTS,
         _NET_FRAME_EXTENTS,
         _NET_WM_NAME,
+        _NET_WM_WINDOW_TYPE,
+        _NET_WM_WINDOW_TYPE_DIALOG,
         _NET_WM_STATE,
         _NET_WM_STATE_STICKY,
         _NET_WM_STATE_HIDDEN,
@@ -878,6 +882,8 @@ static void initAtoms() {
     _NET_REQUEST_FRAME_EXTENTS      = XInternAtom(wmDisplay, "_NET_REQUEST_FRAME_EXTENTS", False);
     _NET_FRAME_EXTENTS              = XInternAtom(wmDisplay, "_NET_FRAME_EXTENTS", False);
     _NET_WM_NAME                    = XInternAtom(wmDisplay, "_NET_WM_NAME", False);
+    _NET_WM_WINDOW_TYPE             = XInternAtom(wmDisplay, "_NET_WM_WINDOW_TYPE", False);
+    _NET_WM_WINDOW_TYPE_DIALOG      = XInternAtom(wmDisplay, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     _NET_WM_STATE                   = XInternAtom(wmDisplay, "_NET_WM_STATE", False);
     _NET_WM_STATE_STICKY            = XInternAtom(wmDisplay, "_NET_WM_STATE_STICKY", False);
     _NET_WM_STATE_HIDDEN            = XInternAtom(wmDisplay, "_NET_WM_STATE_HIDDEN", False);
@@ -898,6 +904,8 @@ static void initAtoms() {
             _NET_REQUEST_FRAME_EXTENTS,
             _NET_FRAME_EXTENTS,
             _NET_WM_NAME,
+            _NET_WM_WINDOW_TYPE,
+            _NET_WM_WINDOW_TYPE_DIALOG,
             _NET_WM_STATE,
             _NET_WM_STATE_STICKY,
             _NET_WM_STATE_HIDDEN,
@@ -1083,23 +1091,26 @@ void wmMoveActiveWindow(unsigned workspace) {
                 if (destination->fullscreen && destination->fullscreen != source->fullscreen) {
                     unsetFullscreen(destination->fullscreen);
                 }
-                for (int i = 0; i < WORKSPACE_COUNT; i++) {
-                    wmWorkspace* ws = &wmWorkspaces[i];
-                    if (ws->fullscreen == source->fullscreen) {
-                        ws->fullscreen = NULL;
-                    }
-                }
                 destination->fullscreen = source->activeWindow;
+                source->fullscreen = NULL;
             }
 
+            unsigned* workspaces = &source->activeWindow->workspaces;
+
             source->showSplitBorder = 0;
-            destination->showSplitBorder = 0;
-
+            source->countWindows--;
             removeWindowFromLayout(source, source->activeWindow);
-            addWindowToLayout(destination, source->activeWindow);
+            *workspaces ^= 1U << wmActiveWorkspace;
 
-            destination->activeWindow = source->activeWindow;
-            destination->activeWindow->workspaces = 1U << workspace;
+            if (!(*workspaces & (1U << workspace))) {
+                destination->showSplitBorder = 0;
+                destination->countWindows++;
+                addWindowToLayout(destination, source->activeWindow);
+                *workspaces |= 1U << workspace;
+
+                destination->activeWindow = source->activeWindow;
+            }
+
             setActiveWindow(source, wmNextVisibleWindow(wmActiveWorkspace));
             updateWorkspaceAtoms();
             wmUpdateBorders();
@@ -1126,6 +1137,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
                 workspace->fullscreen = activeWindow;
             }
 
+            workspace->countWindows++;
             addWindowToLayout(workspace, activeWindow);
             workspace->activeWindow = activeWindow;
         }
@@ -1137,6 +1149,7 @@ void wmToggleActiveWindow(unsigned workspaceIndex) {
                 workspace->fullscreen = NULL;
             }
 
+            workspace->countWindows--;
             removeWindowFromLayout(workspace, activeWindow);
             setActiveWindow(workspace, wmNextVisibleWindow(workspaceIndex));
         }
@@ -1159,10 +1172,12 @@ void wmFocusWindow(wmWindow* window) {
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
     setActiveWindow(workspace, window);
-    workspace->showSplitBorder = 0;
-    wmNode* split = findNode(workspace->layout, workspace->activeWindow);
-    if (split) {
-        workspace->splitNode = split;
+    if (workspace->layout) {
+        workspace->showSplitBorder = 0;
+        wmNode* split = findNode(workspace->layout, workspace->activeWindow);
+        if (split) {
+            workspace->splitNode = split;
+        }
     }
     XSetInputFocus(wmDisplay, window->window, RevertToPointerRoot, CurrentTime);
     wmUpdateBorders();
@@ -1205,6 +1220,7 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     XAddToSaveSet(wmDisplay, window);
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
+    workspace->countWindows++;
 
     XSetWindowAttributes frameAttr;
     frameAttr.colormap = wmColormap;
@@ -1262,13 +1278,19 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
     }
 
     Window parent;
-    int dialog = (hints.flags & (PMaxSize | PMinSize) && maxw == minw && maxh == minh) || XGetTransientForHint(wmDisplay, window, &parent);
+    int dialog =
+            (hints.flags & (PMaxSize | PMinSize) && maxw == minw && maxh == minh) ||
+            XGetTransientForHint(wmDisplay, window, &parent) ||
+            containsAtomValue(window, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DIALOG, _NET_WM_WINDOW_TYPE_SUPPORTED_COUNT);
     int sticky = containsAtomValue(window, _NET_WM_STATE, _NET_WM_STATE_STICKY, _NET_WM_STATE_SUPPORTED_COUNT);
     if (dialog || sticky) {
         setFloatingWindow(new_wmWindow, attributes);
         if (dialog) new_wmWindow->floating->flags |= FLOATING_DIALOG;
         if (sticky) new_wmWindow->floating->flags |= FLOATING_STICKY;
         XRaiseWindow(wmDisplay, frame);
+    }
+    else {
+        XLowerWindow(wmDisplay, frame);
     }
 
     addWindowToLayout(workspace, new_wmWindow);
@@ -1285,6 +1307,7 @@ void wmFreeWindow(wmWindow* window) {
         unsigned mask = 1 << i;
         if (window->workspaces & mask) {
             wmWorkspace* workspace = &wmWorkspaces[i];
+            workspace->countWindows--;
             wmWindow* activeWindow = workspace->activeWindow;
             if (activeWindow == window) {
                 setActiveWindow(workspace, wmNextVisibleWindow(i));
