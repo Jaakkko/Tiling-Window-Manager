@@ -46,5 +46,5 @@ unsigned ram(char* buffer, unsigned bufferLength) {
 }
 
 unsigned battery(char* buffer, unsigned bufferLength) {
-    return runcmd(buffer, bufferLength, "acpi -b 2>/dev/null | awk '{printf substr($4,1,length($4)-1)}'");
+    return runcmd(buffer, bufferLength, "acpi -b 2>/dev/null | grep -o -E \"[0-9]+%\"");
 }
