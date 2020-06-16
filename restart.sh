@@ -1,3 +1,3 @@
 #!/bin/bash
-killall picom
+killall --wait picom
 xdotool key "Super_L+Shift+Q"
