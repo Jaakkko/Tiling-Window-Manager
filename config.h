@@ -20,7 +20,7 @@ static const unsigned minHeight    = 200;
 
 //                                          AARRGGBB
 static const unsigned borderColorSplit          = 0xff50fa78;
-static const unsigned borderColorActive         = 0xffe5e5e5;
+static const unsigned borderColorActive         = 0xffc7c99b;
 static const unsigned borderColor               = 0x00000000;
 static const unsigned borderWidth               = 2;
 static const unsigned gap                       = 4; // 1 = 2px
