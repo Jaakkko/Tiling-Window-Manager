@@ -46,5 +46,6 @@ unsigned ram(char* buffer, unsigned bufferLength) {
 }
 
 unsigned battery(char* buffer, unsigned bufferLength) {
-    return runcmd(buffer, bufferLength, "acpi -b 2>/dev/null | grep -o -E \"[0-9]+%\"");
+    unsigned len = runcmd(buffer, bufferLength, "acpi -b 2>/dev/null | grep -o -E \"[0-9]+%\"");
+    return len - 1;
 }
