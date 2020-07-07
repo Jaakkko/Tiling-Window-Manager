@@ -952,7 +952,7 @@ static void queryWindows() {
         for (int i = 0; i < nwindows; i++) {
             XWindowAttributes attr;
             if (XGetWindowAttributes(wmDisplay, windows[i], &attr)) {
-                if (attr.map_state == IsViewable) {
+                if (!attr.override_redirect && attr.map_state == IsViewable) {
                     wmNewWindow(windows[i], &attr);
                 }
             }
@@ -1213,10 +1213,6 @@ void wmRequestCloseWindow(wmWindow* window) {
  * Window stack
  */
 void wmNewWindow(Window window, const XWindowAttributes* attributes) {
-    if (attributes->override_redirect) {
-        return;
-    }
-
     XAddToSaveSet(wmDisplay, window);
 
     wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];

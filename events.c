@@ -177,6 +177,13 @@ void wmConfigureRequest(XEvent event) {
     XConfigureRequestEvent* ev = &event.xconfigurerequest;
     wmWindow* window = wmWindowTowmWindow(ev->window);
     if (window) {
+        wmFloatingWindow* floating = window->floating;
+        if (floating) {
+            if (ev->value_mask & CWWidth) floating->width = ev->width;
+            if (ev->value_mask & CWHeight) floating->height = ev->height;
+            XResizeWindow(wmDisplay, window->window, floating->width, floating->height);
+            XMoveResizeWindow(wmDisplay, window->frame, floating->x, floating->y, floating->width, floating->height);
+        }
         wmConfigureWindow(window);
     }
     else {
@@ -231,16 +238,22 @@ void wmUnmapNotify(XEvent event) {
 void wmMapRequest(XEvent event) {
     Window window = event.xmaprequest.window;
 
+    XWindowAttributes attr;
+    if (!XGetWindowAttributes(wmDisplay, window, &attr)) {
+        return;
+    }
+
+    if (attr.override_redirect) {
+        return;
+    }
+
     // Don`t map twice
     if (wmWindowTowmWindow(window)) {
         return;
     }
 
-    XWindowAttributes attr;
-    if (XGetWindowAttributes(wmDisplay, window, &attr)) {
-        wmNewWindow(window, &attr);
-        wmShowActiveWorkspace();
-    }
+    wmNewWindow(window, &attr);
+    wmShowActiveWorkspace();
 }
 
 void wmClientMessage(XEvent event) {
