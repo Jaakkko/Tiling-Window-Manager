@@ -525,25 +525,21 @@ static void setFloatingWindow(wmWindow* window, const XWindowAttributes* attribu
     floating->window = window;
     floating->width = MIN(attributes->width, wmScreenWidth);
     floating->height = MIN(attributes->height, wmScreenHeight);
+    floating->x = attributes->x - borderWidth;
+    floating->y = attributes->y - borderWidth;
     window->floating = floating;
-
-    floating->x = wmScreenWidth / 2 - floating->width / 2;
-    floating->y = wmScreenHeight / 2 - floating->height / 2;
-
-    unsigned width = floating->width - 2 * borderWidth;
-    unsigned height = floating->height - 2 * borderWidth;
 
     XMoveResizeWindow(
             wmDisplay,
             window->frame,
             floating->x,
             floating->y,
-            width,
-            height
+            floating->width,
+            floating->height
     );
-    XResizeWindow(wmDisplay, window->window, width, height);
+    XResizeWindow(wmDisplay, window->window, floating->width, floating->height);
 
-    configureWindow(window->window, floating->x, floating->y, width, height);
+    configureWindow(window->window, floating->x, floating->y, floating->width, floating->height);
 
     floating->next = wmFloatingWindows;
     wmFloatingWindows = floating;
