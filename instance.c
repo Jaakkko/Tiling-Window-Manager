@@ -406,19 +406,12 @@ static void updateNetFrameExtens(Window window) {
     XChangeProperty(wmDisplay, window, _NET_FRAME_EXTENTS, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)bounds, 4);
 }
 
-static void configureWindow(Window window, int x, int y, unsigned width, unsigned height) {
+static void configureWindow(Window window, int x, int y, unsigned width, unsigned height, int windowBorderWidth) {
     XConfigureEvent event;
     event.type = ConfigureNotify;
     event.border_width = 0;
-#ifdef smartGaps
-    wmWorkspace* workspace = &wmWorkspaces[wmActiveWorkspace];
-    long bw = (!workspace->layout || workspace->layout->window) ? 0 : borderWidth;
-    event.x = x + bw;
-    event.y = y + bw;
-#else
-    event.x = x + borderWidth;
-    event.y = y + borderWidth;
-#endif
+    event.x = x + windowBorderWidth;
+    event.y = y + windowBorderWidth;
     event.width = width;
     event.height = height;
     event.display = wmDisplay;
@@ -491,7 +484,7 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
         wc.height = height;
         XConfigureWindow(wmDisplay, node->window->window, CWX | CWY | CWWidth | CWHeight, &wc);
         XMoveResizeWindow(wmDisplay, node->window->frame, x, y, width, height);
-        configureWindow(node->window->window, x, y, node->width, node->height);
+        configureWindow(node->window->window, x, y, node->width, node->height, borderWidth);
         updateNetFrameExtens(node->window->window);
     }
     else {
@@ -520,15 +513,16 @@ static void showNode(wmNode* node, int x, int y, unsigned width, unsigned height
     }
 }
 
-static void setFloatingWindow(wmWindow* window, const XWindowAttributes* attributes) {
+static void setFloatingWindow(wmWindow* window, const XWindowAttributes* attributes, int windowBorderWidth) {
     wmFloatingWindow* floating = calloc(1, sizeof(wmFloatingWindow));
     floating->window = window;
     floating->width = MIN(attributes->width, wmScreenWidth);
     floating->height = MIN(attributes->height, wmScreenHeight);
-    floating->x = attributes->x - borderWidth;
-    floating->y = attributes->y - borderWidth;
+    floating->x = attributes->x - windowBorderWidth;
+    floating->y = attributes->y - windowBorderWidth;
     window->floating = floating;
 
+    XSetWindowBorderWidth(wmDisplay, window->frame, windowBorderWidth);
     XMoveResizeWindow(
             wmDisplay,
             window->frame,
@@ -539,7 +533,7 @@ static void setFloatingWindow(wmWindow* window, const XWindowAttributes* attribu
     );
     XResizeWindow(wmDisplay, window->window, floating->width, floating->height);
 
-    configureWindow(window->window, floating->x, floating->y, floating->width, floating->height);
+    configureWindow(window->window, floating->x, floating->y, floating->width, floating->height, windowBorderWidth);
 
     floating->next = wmFloatingWindows;
     wmFloatingWindows = floating;
@@ -658,7 +652,7 @@ static void stateHandler(XClientMessageEvent* event) {
 
                     XWindowAttributes attrs;
                     XGetWindowAttributes(wmDisplay, window->window, &attrs);
-                    setFloatingWindow(window, &attrs);
+                    setFloatingWindow(window, &attrs, borderWidth);
                     window->floating->flags |= FLOATING_STICKY;
                 }
                 else if (window->floating->flags & FLOATING_STICKY) {
@@ -1276,7 +1270,59 @@ void wmNewWindow(Window window, const XWindowAttributes* attributes) {
             containsAtomValue(window, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DIALOG, _NET_WM_WINDOW_TYPE_SUPPORTED_COUNT);
     int sticky = containsAtomValue(window, _NET_WM_STATE, _NET_WM_STATE_STICKY, _NET_WM_STATE_SUPPORTED_COUNT);
     if (dialog || sticky) {
-        setFloatingWindow(new_wmWindow, attributes);
+        int floatingWindowBorderWidth = borderWidth;
+
+        // Check motif hints
+        // Reference: https://github.com/i3/i3/blob/next/src/window.c#L415
+        {
+            Atom _MOTIF_WM_HINTS = XInternAtom(wmDisplay, "_MOTIF_WM_HINTS", False);
+
+            Atom type_return;
+            int format_return;
+            unsigned long nitems;
+            unsigned long bytes_after_return;
+            unsigned long* motif_hints;
+            Status status = XGetWindowProperty(wmDisplay, window, _MOTIF_WM_HINTS, 0, 5, False, AnyPropertyType, &type_return, &format_return, &nitems, &bytes_after_return, (unsigned char**)&motif_hints);
+            if (status == Success) {
+                /* This implementation simply mirrors Gnome's Metacity. Official
+                 * documentation of this hint is nowhere to be found.
+                 * For more information see:
+                 * https://people.gnome.org/~tthurman/docs/metacity/xprops_8h-source.html
+                 * https://stackoverflow.com/questions/13787553/detect-if-a-x11-window-has-decorations
+                 */
+#define MWM_HINTS_FLAGS_FIELD 0
+#define MWM_HINTS_DECORATIONS_FIELD 2
+
+#define MWM_HINTS_DECORATIONS (1 << 1)
+#define MWM_DECOR_ALL (1 << 0)
+#define MWM_DECOR_BORDER (1 << 1)
+#define MWM_DECOR_TITLE (1 << 3)
+                /* The property consists of an array of 5 uint32_t's. The first value is a
+                 * bit mask of what properties the hint will specify. We are only interested
+                 * in MWM_HINTS_DECORATIONS because it indicates that the third value of the
+                 * array tells us which decorations the window should have, each flag being
+                 * a particular decoration. Notice that X11 (Xlib) often mentions 32-bit
+                 * fields which in reality are implemented using unsigned long variables
+                 * (64-bits long on amd64 for example). On the other hand,
+                 * xcb_get_property_value() behaves strictly according to documentation,
+                 * i.e. returns 32-bit data fields.
+                 */
+                if (nitems == 5 && motif_hints[MWM_HINTS_FLAGS_FIELD] & MWM_HINTS_DECORATIONS) {
+                    if (motif_hints[MWM_HINTS_DECORATIONS_FIELD] == 0) {
+                        floatingWindowBorderWidth = 0;
+                    }
+                }
+#undef MWM_HINTS_FLAGS_FIELD
+#undef MWM_HINTS_DECORATIONS_FIELD
+#undef MWM_HINTS_DECORATIONS
+#undef MWM_DECOR_ALL
+#undef MWM_DECOR_BORDER
+#undef MWM_DECOR_TITLE
+                XFree(motif_hints);
+            }
+        }
+
+        setFloatingWindow(new_wmWindow, attributes, floatingWindowBorderWidth);
         if (dialog) new_wmWindow->floating->flags |= FLOATING_DIALOG;
         if (sticky) new_wmWindow->floating->flags |= FLOATING_STICKY;
         XRaiseWindow(wmDisplay, frame);
@@ -1431,7 +1477,7 @@ void wmShowActiveWorkspace() {
             wc.height = height;
             XConfigureWindow(wmDisplay, layout->window->window, CWX | CWY | CWWidth | CWHeight, &wc);
             XMoveResizeWindow(wmDisplay, layout->window->frame, 0, y, wmScreenWidth, height);
-            configureWindow(layout->window->window, 0, y, wmScreenWidth, height);
+            configureWindow(layout->window->window, 0, y, wmScreenWidth, height, 0);
         }
         else {
             wmUpdateMouseCoords();
@@ -1668,7 +1714,7 @@ void wmMoveLowerEdgeVertically(wmVerticalDirection direction) {
 void wmConfigureWindow(wmWindow* window) {
     wmFloatingWindow* dialog = window->floating;
     if (dialog) {
-        configureWindow(window->window, dialog->x, dialog->y, dialog->width, dialog->height);
+        configureWindow(window->window, dialog->x, dialog->y, dialog->width, dialog->height, dialog->borderWidth);
         return;
     }
 
@@ -1679,7 +1725,7 @@ void wmConfigureWindow(wmWindow* window) {
 
     wmNode* node = findNode(workspace->layout, window);
     if (node) {
-        configureWindow(window->window, node->x, node->y, node->width, node->height);
+        configureWindow(window->window, node->x, node->y, node->width, node->height, borderWidth);
     }
 }
 void wmUpdateBounds() {

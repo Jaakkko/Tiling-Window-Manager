@@ -28,6 +28,7 @@ struct wmFloatingWindow {
     unsigned width;
     unsigned height;
     int flags;
+    int borderWidth;
     wmFloatingWindow* next;
 };
 
